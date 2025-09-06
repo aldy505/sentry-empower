@@ -12,20 +12,21 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-"use strict";
-const axios = require("axios");
+import * as Sentry from "@sentry/node";
 
 // Imported Functions
-const DB = require("./db");
+import { getProducts, getJoinedProducts, getInventory } from "./db";
 
 // Utils
-const utils = require("./utils");
+import { getIteratorProcessor } from "./utils";
 
 // [START app]
-const express = require("express");
+import express, { urlencoded, json } from "express";
+import cors from "cors";
+
 const app = express();
-const cors = require("cors");
-var headers = {};
+const headers = {};
+
 const sentryEventContext = function (req, res, next) {
   const se = req.headers.se;
 
@@ -59,63 +60,18 @@ console.log("> DSN", dsn);
 console.log("> RELEASE", release);
 console.log("> ENVIRONMENT", environment);
 
-// Initialize Sentry
-const Sentry = require("@sentry/node");
-const Tracing = require("@sentry/tracing");
-const { ProfilingIntegration } = require("@sentry/profiling-node");
-Sentry.init({
-  dsn: dsn,
-  environment: environment,
-  release: release,
-  integrations: [
-    new Sentry.Integrations.Http({ tracing: true }),
-    new Tracing.Integrations.Express({ app }),
-    new ProfilingIntegration(),
-    new Sentry.Integrations.LocalVariables({
-      captureAllExceptions: true,
-    }),
-  ],
-  tracesSampleRate: 1.0,
-  profilesSampleRate: 1.0,
-  tracesSampler: (samplingContext) => {
-    // sample out transactions from http OPTIONS requests hitting endpoints
-    const request = samplingContext.request;
-    if (request && request.method == "OPTIONS") {
-      return 0.0;
-    } else {
-      return 1.0;
-    }
-  },
-  includeLocalVariables: true,
-});
-
 async function fetchProducts(req, res) {
   try {
     // This /api call must happen before the DB.products() call or else it's a broken subtrace (if you do it after DB.Products())
-    await axios
-      .get(RUBY_BACKEND + "/api", { headers: headers })
-      .then((response) => {
-        console.log("> response", response.data);
-        return;
-      })
-      .catch((error) => {
-        console.log(error);
-        Sentry.captureException(error);
-      });
+    const response = await fetch(RUBY_BACKEND + "/api", { headers: headers });
+    console.log("> response", response);
 
-    let transaction = Sentry.getCurrentHub().getScope().getTransaction();
+    const products = await getProducts();
 
-    const products = await DB.getProducts();
-
-    let profilingSpan = transaction.startChild({
-      op: "/products.get_iterator",
-      description: "function",
-    });
-
-    await utils.getIteratorProcessor(products);
-
-    profilingSpan.finish();
-    transaction.finish();
+    await Sentry.startSpan({
+      name: "/products.get_iterator",
+      op: "function",
+    }, () => getIteratorProcessor(products));
 
     res.status(200).send(products);
   } catch (error) {
@@ -124,15 +80,9 @@ async function fetchProducts(req, res) {
   }
 }
 
-// The Sentry request handler must be the first middleware on the app
-app.use(Sentry.Handlers.requestHandler());
-
-// TracingHandler creates a trace for every incoming request
-app.use(Sentry.Handlers.tracingHandler());
-
 app.use(cors());
-app.use(express.urlencoded({ extended: true }));
-app.use(express.json());
+app.use(urlencoded({ extended: true }));
+app.use(json());
 app.use(sentryEventContext);
 
 // Configure ENV
@@ -154,24 +104,13 @@ app.get("/products", fetchProducts);
 app.get("/products-join", async (req, res) => {
   try {
     // This /api call must happen before the DB.products() call or else it's a broken subtrace (if you do it after DB.Products())
-    await axios
-      .get(RUBY_BACKEND + "/api", { headers: headers })
-      .then((response) => {
-        console.log("> response", response.data);
-        return;
-      })
-      .catch((error) => {
-        console.log(error);
-        Sentry.captureException(error);
-      });
+    const response = await fetch(RUBY_BACKEND + "/api", { headers: headers })
+    console.log("> response", response);
 
-    let transaction = Sentry.getCurrentHub().getScope().getTransaction();
-    let span = transaction.startChild({
-      op: "/products.get_products_join",
-      description: "function",
-    });
-    const products = await DB.getJoinedProducts();
-    span.finish();
+    const products = await Sentry.startSpan({
+      name: "/products.get_products_join",
+      op: "function",
+    }, () => getJoinedProducts());
 
     res.status(200).send(products);
   } catch (error) {
@@ -185,24 +124,19 @@ app.post("/checkout", async (req, res) => {
   const cart = order["cart"];
   const form = order["form"];
   let inventory = [];
-  try {
-    const transaction = Sentry.getCurrentHub().getScope().getTransaction();
 
-    // Get Inventory
-    let spanGetInventory = transaction.startChild({
-      op: "function",
-      description: "getInventory",
-    });
-    inventory = await DB.getInventory(cart);
-    console.log("> /checkout inventory", inventory);
+  // Get Inventory
+  inventory = await Sentry.startSpan({
+    op: "function",
+    name: "getInventory",
+  }, () => getInventory(cart));
+  console.log("> /checkout inventory", inventory);
 
-    spanGetInventory.finish();
-
-    // Process Order
-    let spanProcessOrder = transaction.startChild({
-      op: "function",
-      description: "processOrder",
-    });
+  // Process Order
+  await Sentry.startSpan({
+    op: "function",
+    name: "processOrder",
+  }, async () => {
     let quantities = cart["quantities"];
     console.log("quantities", quantities);
     for (const cartItem in quantities) {
@@ -210,13 +144,9 @@ app.post("/checkout", async (req, res) => {
         throw new Error("Not enough inventory for product");
       }
     }
-    spanProcessOrder.finish();
+  });
 
-    res.status(200).send("success");
-  } catch (error) {
-    Sentry.captureException(error);
-    res.status(500).send(error);
-  }
+  res.status(200).send("success");
 });
 
 app.get("/api", (req, res) => {
@@ -231,7 +161,7 @@ app.get("/organization", (req, res) => {
   res.send(`express /organization`);
 });
 
-app.use(Sentry.Handlers.errorHandler());
+app.use(Sentry.setupExpressErrorHandler());
 
 const PORT = process.env.PORT;
 app.listen(PORT, () => {
@@ -243,4 +173,3 @@ function hasInventory(item) {
   return false;
 }
 
-module.exports = { app, Sentry, Tracing };

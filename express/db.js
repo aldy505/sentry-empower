@@ -1,5 +1,4 @@
-require("dotenv").config();
-const Sentry = require("@sentry/node");
+import * as Sentry from "@sentry/node";
 
 // Knex is the database query builder used in the GCP docs, which
 // is why we are using it here. See docs:
@@ -7,139 +6,85 @@ const Sentry = require("@sentry/node");
 const knex = openDBConnection();
 
 const getProducts = async function () {
-  let results = [];
-  try {
+  return await Sentry.startSpan({
+    name: "getProducts",
+    op: "function",
+  }, async (span) => {
+    let results = [];
     // Retrieve Products
-    let transaction = Sentry.getCurrentHub().getScope().getTransaction();
-    let span = transaction.startChild({
-      op: "getproducts",
-      description: "db.query",
-    });
+    
     // backorder_inventory is a "sleepy view", run the following query to get current sleep duration:
     // SELECT pg_get_viewdef('backorder_inventory', true)
     const productsQuery = `SELECT * FROM products CROSS JOIN backorder_inventory`;
-    const subspan = span.startChild({
-      op: "fetch products",
-      description: productsQuery,
-    });
 
-    const products = await knex.raw(productsQuery).catch((err) => {
-      console.log("There was an error", err);
-      throw err;
-    });
+    const products = await knex.raw(productsQuery);
     Sentry.setTag("totalProducts", products.rows.length);
-    span.setData("Products", products.rows);
-    subspan.finish();
-    span.finish();
+    span.setAttribute("totalProducts", products.rows.length);
 
     // Retrieve Reviews
-    span = transaction.startChild({
-      op: "getproducts.reviews",
-      description: "db.query",
-    });
     let formattedProducts = [];
-    for (product of products.rows) {
+    for (const product of products.rows) {
       // weekly_promotions is a "sleepy view", run the following query to get current sleep duration:
       // SELECT pg_get_viewdef('weekly_promotions', true)
       const reviewsQuery = `SELECT * FROM reviews, weekly_promotions WHERE productId = ${product.id}`;
-      const subspan = span.startChild({
-        op: "fetch review",
-        description: reviewsQuery,
-      });
       const retrievedReviews = await knex.raw(reviewsQuery);
       let productWithReviews = product;
       productWithReviews["reviews"] = retrievedReviews.rows;
       formattedProducts.push(productWithReviews);
-      subspan.setData("Reviews", retrievedReviews.rows);
-      subspan.finish();
     }
-    span.setData("Products With Reviews", formattedProducts);
-    span.finish();
 
     return formattedProducts;
-  } catch (error) {
-    Sentry.captureException(error);
-    throw error;
-  }
+  })
 };
 
 const getJoinedProducts = async function () {
-  let transaction = Sentry.getCurrentHub().getScope().getTransaction();
+  return await Sentry.startSpan({
+    name: "getJoinedProducts",
+    op: "function",
+  }, async (span) => {
+    // Retrieve Products
+    const productsQuery = `SELECT * FROM products`;
+    const products = await knex.raw(productsQuery);
+    Sentry.setTag("totalProducts", products.rows.length);
 
-  // Retrieve Products
-  const productsQuery = `SELECT * FROM products`;
-  let span = transaction.startChild({
-    op: "getjoinedproducts",
-    description: productsQuery,
-  });
-  const products = await knex.raw(productsQuery).catch((err) => {
-    console.log("There was an error", err);
-    throw err;
-  });
-  Sentry.setTag("totalProducts", products.rows.length);
-  span.setData("Products", products.rows);
-  span.finish();
+    // Retrieve Reviews
+    const reviewsQuery =
+      "SELECT reviews.id, products.id AS productid, reviews.rating, reviews.customerId, reviews.description, reviews.created FROM reviews INNER JOIN products ON reviews.productId = products.id";
+    const retrievedReviews = await knex.raw(reviewsQuery);
 
-  // Retrieve Reviews
-  const reviewsQuery =
-    "SELECT reviews.id, products.id AS productid, reviews.rating, reviews.customerId, reviews.description, reviews.created FROM reviews INNER JOIN products ON reviews.productId = products.id";
-  span = transaction.startChild({
-    op: "getjoinedproducts.reviews",
-    description: reviewsQuery,
-  });
-  const retrievedReviews = await knex.raw(reviewsQuery);
-  span.setData("reviews", retrievedReviews.rows);
-  span.finish();
+    // Format Products/Reviews
+    let formattedProducts = [];
+    for (product of products.rows) {
+      let productWithReviews = product;
+      productWithReviews["reviews"] = retrievedReviews.rows;
+      formattedProducts.push(productWithReviews);
+    }
 
-  // Format Products/Reviews
-  span = transaction.startChild({
-    op: "getjoinedproducts.formatresults",
-    description: "function",
+    return formattedProducts;
   });
-  let formattedProducts = [];
-  for (product of products.rows) {
-    let productWithReviews = product;
-    productWithReviews["reviews"] = retrievedReviews.rows;
-    formattedProducts.push(productWithReviews);
-  }
-  span.setData("results", formattedProducts);
-  span.finish();
-
-  transaction.finish();
-  return formattedProducts;
 };
 
 const getInventory = async function (cart) {
-  console.log("> getting inventory");
-  const quantities = cart["quantities"];
-  console.log("> quantities", quantities);
-  let productIds = [];
-  for (productId in quantities) {
-    productIds.push(productId);
-  }
-  productIds = formatArray(productIds);
-  console.log("> productIds", productIds);
-
-  try {
-    const transaction = Sentry.getCurrentHub().getScope().getTransaction();
-
-    let span = transaction.startChild({
-      op: "getInventory",
-      description: "db.query",
-    });
+  return await Sentry.startSpan({
+    name: "getInventory",
+    op: "function",
+  }, async (span) => {
+    console.log("> getting inventory");
+    const quantities = cart["quantities"];
+    console.log("> quantities", quantities);
+    let productIds = [];
+    for (productId in quantities) {
+      productIds.push(productId);
+    }
+    productIds = formatArray(productIds);
+    console.log("> productIds", productIds);
 
     const inventory = await knex.raw(
       `SELECT * FROM inventory WHERE productId in ${productIds}`
     );
 
-    span.setData("inventory", inventory.rows);
-    span.finish();
-
     return inventory.rows;
-  } catch (error) {
-    Sentry.captureException(error);
-    throw error;
-  }
+  });
 };
 
 function formatArray(ids) {
@@ -153,7 +98,7 @@ function formatArray(ids) {
 
 function openDBConnection() {
   let host;
-  if (process.env.EXPRESS_ENV === "test") {
+  if (process.env.EXPRESS_ENV === "test" || process.env.EXPRESS_ENV === "self-hosted") {
     // The cloud sql instance connection
     // name doesn't work locally, but the
     // public IP of the instance does.
@@ -174,4 +119,4 @@ function openDBConnection() {
   return db;
 }
 
-module.exports = { getProducts, getJoinedProducts, getInventory };
+export default { getProducts, getJoinedProducts, getInventory };
