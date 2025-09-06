@@ -1,5 +1,5 @@
 x-base-env: &x-base-env
-  RELEASE: 2023+compose
+  RELEASE: 2025+compose
   RUBY_BACKEND: http://ruby:4567
   DB_HOST: postgres
   DB_USERNAME: postgres
@@ -10,7 +10,7 @@ services:
   nginx:
     image: nginx:alpine
     ports:
-      - "80:80"
+      - "8342:80"
     volumes:
       - ./nginx.conf:/etc/nginx/nginx.conf:ro
     depends_on:
@@ -23,33 +23,30 @@ services:
       <<: *x-base-env
       REACT_APP_DSN: 
     init: true
-    ports: [3000:3000]
   flask:
     build: flask
     environment:
       <<: *x-base-env
-      FLASK_ENV: production
+      FLASK_ENV: self-hosted
       FLASK_APP: src.main:application
       FLASK_APP_DSN: 
       FLASK_REDISHOST: redis
     init: true
-    ports: [8080:8080]
   express:
     build: express
     environment:
       <<: *x-base-env
       PORT: 8081
-      EXPRESS_ENV: production
+      EXPRESS_ENV: self-hosted
       EXPRESS_APP_DSN: 
     init: true
-    ports: [8081:8081]
   laravel:
     build: laravel
     environment:
       <<: *x-base-env
+      LARVEL_ENV: self-hosted
       LARAVEL_APP_DSN: 
     init: true
-    ports: [8000:8000]
   ruby:
     build: ruby
     environment:
@@ -61,7 +58,6 @@ services:
     environment:
       - POSTGRES_PASSWORD=postgres
     init: true
-    ports: [5432:5432]
     volumes:
       - ./postgres/data/empowerplant.sql:/docker-entrypoint-initdb.d/empowerplant.sql:ro
   redis:

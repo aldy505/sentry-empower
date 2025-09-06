@@ -9,11 +9,9 @@ from flask import Flask, json, jsonify, request, make_response, send_from_direct
 from openai import OpenAI
 from flask_caching import Cache
 from flask_cors import CORS
-from statsig.statsig_user import StatsigUser
-from statsig import statsig, StatsigOptions, StatsigEnvironmentTier
 import dotenv
 from .db import decrement_inventory, get_products, get_products_join, get_inventory
-from .utils import parseHeaders, get_iterator, evaluate_statsig_flags
+from .utils import parseHeaders, get_iterator
 from .queues.tasks import sendEmail
 import sentry_sdk
 from sentry_sdk.integrations.flask import FlaskIntegration
@@ -21,7 +19,6 @@ from sentry_sdk.integrations.sqlalchemy import SqlalchemyIntegration
 from sentry_sdk.integrations.redis import RedisIntegration
 from sentry_sdk.integrations.logging import LoggingIntegration
 from sentry_sdk.ai.monitoring import ai_track
-from sentry_sdk.integrations.statsig import StatsigIntegration
 from celery import Celery, states
 from celery.exceptions import Ignore
 
@@ -96,7 +93,6 @@ class MyFlask(Flask):
                 FlaskIntegration(),
                 SqlalchemyIntegration(),
                 RedisIntegration(cache_prefixes=["flask.", "ruby."]),
-                StatsigIntegration()
             ],
             traces_sample_rate=1.0,
             before_send=before_send,
@@ -157,7 +153,6 @@ class CORSWSGIWrapper:
 app = MyFlask(__name__)
 CORS(app, origins="*", allow_headers="*")
 
-# statsig.initialize(os.environ.get("STATSIG_SERVER_KEY"))
 
 redis_host = os.environ.get("FLASK_REDISHOST", "localhost")
 redis_port = int(os.environ.get("FLASK_LOCAL_REDISPORT", 6379))
@@ -227,14 +222,6 @@ def suggestion():
 @app.route('/checkout', methods=['POST'])
 def checkout():
     logger.info('Received /checkout endpoint request')
-
-
-
-    try:
-        evaluate_statsig_flags()
-    except Exception as e:
-        sentry_sdk.capture_exception(e)
-        logger.error('Error evaluating Statsig flags')
 
     order = json.loads(request.data)
     cart = order["cart"]

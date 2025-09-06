@@ -7,7 +7,6 @@ import { connect } from 'react-redux';
 import Loader from 'react-loader-spinner';
 import { countItemsInCart } from '../utils/cart';
 import { getTag } from '../utils/utils';
-import { updateStatsigUserAndEvaluate } from '../utils/statsig';
 
 function Checkout({ backend, rageclick, checkout_success, cart }) {
   const navigate = useNavigate();
@@ -62,15 +61,6 @@ function Checkout({ backend, rageclick, checkout_success, cart }) {
     let tags = { 'backendType': getTag('backendType'), 'cexp': getTag('cexp'), 'items_at_checkout': itemsInCart, 'checkout.click': 1 };
     checkout_span.setAttributes(tags);
     const stopMeasurement = measureRequestDuration('/checkout');
-
-
-    // We are passing in a random user ID to get distribution of flag values to see in Sentry
-    // Rules for flag values are defined in statsig UI
-    const randomUserId = Math.random().toString(36).substring(2, 15);
-    console.log(`Updating Statsig user for Products page view: ${randomUserId}`);
-    updateStatsigUserAndEvaluate(randomUserId).catch(err => {
-      Sentry.captureException(new Error("Statsig user update failed: " + err));
-    });
 
     const response = await fetch(backend + '/checkout?v2=true', {
       method: 'POST',

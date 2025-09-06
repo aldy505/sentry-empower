@@ -3,7 +3,6 @@ import ReactDOM from 'react-dom';
 import './index.css';
 import 'react-loader-spinner/dist/loader/css/react-spinner-loader.css';
 import * as Sentry from '@sentry/react';
-import { statsigClient, updateStatsigUserAndEvaluate } from './utils/statsig';
 import { createBrowserHistory } from 'history';
 import {
   Routes,
@@ -113,7 +112,6 @@ Sentry.init({
       networkDetailAllowUrls: [/.*/],
       unmask: [".sentry-unmask"],
     }),
-    Sentry.statsigIntegration({ featureFlagClient: statsigClient }),
     Sentry.consoleLoggingIntegration(), // All console logs are sent to Sentry
   ],
   beforeSend(event, hint) {
@@ -155,8 +153,6 @@ Sentry.init({
     return event;
   },
 });
-
-await statsigClient.initializeAsync();
 
 const SentryRoutes = Sentry.withSentryReactRouterV6Routing(Routes);
 

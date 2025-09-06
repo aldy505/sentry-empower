@@ -7,7 +7,6 @@ import measureRequestDuration from '../utils/measureRequestDuration';
 import Loader from 'react-loader-spinner';
 import ProductCard from './ProductCard';
 import { useState, useEffect } from 'react';
-import { updateStatsigUserAndEvaluate } from '../utils/statsig';
 
 function Products({ frontendSlowdown, backend, productsApi, productsExtremelySlow, productsBeError, addToCartJsError }) {
   const [products, setProducts] = useState([]);

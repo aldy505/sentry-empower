@@ -1,5 +1,25 @@
 # Empower Plant
 
+> [!IMPORTANT]
+> This project is a personal fork intended to be used for generating some events for self-hosted Sentry. Some parts of the code might not be maintained and might not work as expected. Please use at your own risk.
+> For the original README, read on.
+
+## Self-hosted Note
+
+If you want to use this project for feeding data to your self-hosted Sentry to learn about the available features, you can provision a relatively small server of 2 CPUs and 4GB RAM, with Docker available.
+
+Quick setup:
+```bash
+git clone https://github.com/sentry-demos/empower.git
+cd empower
+docker compose up -d
+```
+Then open `http://localhost:8342/` in your browser.
+
+There is also a [k6](https://k6.io/) test suite available in the `load-generator` folder, which can be used to generate load on the app.
+
+---
+
 <img width="633" alt="Empower Plant website screenshot" src="https://github.com/sentry-demos/empower/assets/490201/6bce9ad6-d256-4a6d-a49b-e0fe8cdd193c">
 
 
