@@ -8,6 +8,7 @@ import logging
 from flask import Flask, json, jsonify, request, make_response, send_from_directory
 from openai import OpenAI
 from flask_caching import Cache
+from flask_cors import CORS
 from statsig.statsig_user import StatsigUser
 from statsig import statsig, StatsigOptions, StatsigEnvironmentTier
 import dotenv
@@ -154,9 +155,9 @@ class CORSWSGIWrapper:
 
 
 app = MyFlask(__name__)
-app = CORSWSGIWrapper(app)
+CORS(app, origins="*", allow_headers="*")
 
-statsig.initialize(os.environ.get("STATSIG_SERVER_KEY"))
+# statsig.initialize(os.environ.get("STATSIG_SERVER_KEY"))
 
 redis_host = os.environ.get("FLASK_REDISHOST", "localhost")
 redis_port = int(os.environ.get("FLASK_LOCAL_REDISPORT", 6379))
@@ -537,3 +538,5 @@ def sentry_event_context():
 
     if email not in [None, "undefined"]:
         sentry_sdk.set_user({"email": email})
+
+application = app
