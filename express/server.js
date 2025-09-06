@@ -15,10 +15,10 @@
 import * as Sentry from "@sentry/node";
 
 // Imported Functions
-import { getProducts, getJoinedProducts, getInventory } from "./db";
+import { getProducts, getJoinedProducts, getInventory } from "./db.js";
 
 // Utils
-import { getIteratorProcessor } from "./utils";
+import { getIteratorProcessor } from "./utils.js";
 
 // [START app]
 import express, { urlencoded, json } from "express";
