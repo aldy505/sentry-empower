@@ -18,10 +18,13 @@ services:
       - express
       - react
   react:
-    build: react
-    environment:
-      <<: *x-base-env
-      REACT_APP_DSN: 
+    build:
+      context: react
+      dockerfile: Dockerfile
+      args:
+        <<: *x-base-env
+        REACT_APP_DSN:
+        PUBLIC_BASE_URL:
     init: true
   flask:
     build: flask
