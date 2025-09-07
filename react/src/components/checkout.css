@@ -23,7 +23,7 @@
   display: block;
   width: 100%;
 }
-.checkout-form input[type='checkbox'] {
+.checkout-form input[type="checkbox"] {
   display: inline-block;
   width: auto;
 }
@@ -32,7 +32,7 @@
   margin: 3rem auto 1rem;
 }
 
-input[type='submit'].complete-checkout-btn {
+input[type="submit"].complete-checkout-btn {
   font-size: 1.25rem;
   margin-top: 3rem;
 }

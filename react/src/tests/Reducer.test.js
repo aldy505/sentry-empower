@@ -1,13 +1,13 @@
-import reducer from '../reducers/index';
-import { ADD_PRODUCT, REMOVE_PRODUCT, RESET_CART, SET_PRODUCTS, SET_FLAG } from '../actions/types';
+import { ADD_PRODUCT, REMOVE_PRODUCT, RESET_CART, SET_FLAG, SET_PRODUCTS } from "../actions/types";
+import reducer from "../reducers/index";
 
-if (typeof structuredClone === 'undefined') {
+if (typeof structuredClone === "undefined") {
   global.structuredClone = (obj) => JSON.parse(JSON.stringify(obj));
 }
 
-describe('Reducer', () => {
-  const productOne = { id: 1, name: 'Product 1', price: 10 };
-  const productTwo = { id: 2, name: 'Product 2', price: 20 };
+describe("Reducer", () => {
+  const productOne = { id: 1, name: "Product 1", price: 10 };
+  const productTwo = { id: 2, name: "Product 2", price: 20 };
   const initialState = {
     cart: {
       items: [],
@@ -18,11 +18,11 @@ describe('Reducer', () => {
     flag: false,
   };
 
-  it('should return the initial state', () => {
+  it("should return the initial state", () => {
     expect(reducer(undefined, {})).toEqual(initialState);
   });
 
-  it('should handle ADD_PRODUCT', () => {
+  it("should handle ADD_PRODUCT", () => {
     const action = {
       type: ADD_PRODUCT,
       payload: {
@@ -36,12 +36,12 @@ describe('Reducer', () => {
         quantities: { 1: 1 },
         total: 10,
       },
-      flag: undefined
+      flag: undefined,
     };
     expect(reducer(initialState, action)).toEqual(expectedState);
   });
 
-  it('should handle REMOVE_PRODUCT', () => {
+  it("should handle REMOVE_PRODUCT", () => {
     const stateWithProduct = {
       ...initialState,
       cart: {
@@ -63,12 +63,12 @@ describe('Reducer', () => {
         quantities: {},
         total: 0,
       },
-      flag: undefined
+      flag: undefined,
     };
     expect(reducer(stateWithProduct, action)).toEqual(expectedState);
   });
 
-  it('should handle RESET_CART', () => {
+  it("should handle RESET_CART", () => {
     const stateWithProducts = {
       ...initialState,
       cart: {
@@ -83,17 +83,17 @@ describe('Reducer', () => {
     const expectedState = {
       ...initialState,
       cart: {
-        "items": [],
-        "quantities": {},
-        "total": 0,
+        items: [],
+        quantities: {},
+        total: 0,
       },
       products: [],
-      flag: undefined
+      flag: undefined,
     };
     expect(reducer(stateWithProducts, action)).toEqual(expectedState);
   });
 
-  it('should handle SET_PRODUCTS', () => {
+  it("should handle SET_PRODUCTS", () => {
     const action = {
       type: SET_PRODUCTS,
       payload: {
@@ -103,12 +103,12 @@ describe('Reducer', () => {
     const expectedState = {
       ...initialState,
       products: [productOne, productTwo],
-      flag: undefined
+      flag: undefined,
     };
     expect(reducer(initialState, action)).toEqual(expectedState);
   });
 
-  it('should handle SET_FLAG', () => {
+  it("should handle SET_FLAG", () => {
     const action = {
       type: SET_FLAG,
     };

@@ -1,50 +1,55 @@
-import { Component } from 'react';
-import './products.css';
-import * as Sentry from '@sentry/react';
-import { connect } from 'react-redux';
-import { setProducts, addProduct } from '../actions';
-import measureRequestDuration from '../utils/measureRequestDuration';
-import Loader from 'react-loader-spinner';
-import ProductCard from './ProductCard';
-import { useState, useEffect } from 'react';
+import { Component } from "react";
+import "./products.css";
+import * as Sentry from "@sentry/react";
+import { useEffect, useState } from "react";
+import { connect } from "react-redux";
+import { PulseLoader } from "react-spinners";
+import { addProduct, setProducts } from "../actions";
+import measureRequestDuration from "../utils/measureRequestDuration";
+import ProductCard from "./ProductCard";
 
-function Products({ frontendSlowdown, backend, productsApi, productsExtremelySlow, productsBeError, addToCartJsError }) {
+function Products({
+  frontendSlowdown,
+  backend,
+  productsApi,
+  productsExtremelySlow,
+  productsBeError,
+  addToCartJsError,
+}) {
   const [products, setProducts] = useState([]);
 
   function determineProductsEndpoint() {
-    if (productsApi !== 'products-join') {
+    if (productsApi !== "products-join") {
       if (productsExtremelySlow) {
-        return '/products?fetch_promotions=true';
+        return "/products?fetch_promotions=true";
       } else if (productsBeError) {
-        return '/products?in_stock_only=1';
+        return "/products?in_stock_only=1";
       } else {
-        return frontendSlowdown ? '/products-join' : '/products';
+        return frontendSlowdown ? "/products-join" : "/products";
       }
     } else {
-      return '/products-join';
+      return "/products-join";
     }
   }
 
   function fetchUncompressedAsset() {
     let se; // `se` is automatically added to all fetch requests, but need to do manually for script tags
-    Sentry.withScope(function (scope) { se = scope._tags.se; });
+    Sentry.withScope((scope) => {
+      se = scope._tags.se;
+    });
 
-    let uc_small_script = document.createElement('script');
+    const uc_small_script = document.createElement("script");
     uc_small_script.async = false;
     uc_small_script.src =
-      backend +
-      '/compressed_assets/compressed_small_file.js' +
-      `?cacheBuster=${Math.random()}&se=${se}`;
+      backend + "/compressed_assets/compressed_small_file.js" + `?cacheBuster=${Math.random()}&se=${se}`;
     document.body.appendChild(uc_small_script);
 
     // big uncompressed file
-    let c_big_script = document.createElement('script');
+    const c_big_script = document.createElement("script");
     c_big_script.async = false;
 
     c_big_script.src =
-      backend +
-      '/uncompressed_assets/uncompressed_big_file.js' +
-      `?cacheBuster=${Math.random()}&se=${se}`;
+      backend + "/uncompressed_assets/uncompressed_big_file.js" + `?cacheBuster=${Math.random()}&se=${se}`;
     document.body.appendChild(c_big_script);
   }
 
@@ -58,7 +63,7 @@ function Products({ frontendSlowdown, backend, productsApi, productsExtremelySlo
         // small compressed file
         fetchUncompressedAsset();
 
-        console.log('triggering slow render problem');
+        console.log("triggering slow render problem");
         // When triggering a frontend-only slowdown, cause a slow render problem
         setProducts(
           Array(150) // 150 is arbitrary to make a slow enough render
@@ -67,14 +72,14 @@ function Products({ frontendSlowdown, backend, productsApi, productsExtremelySlo
             .map((p, n) => {
               p.id = n;
               return p;
-            })
+            }),
         );
       } else {
-        console.log('setting products quickly');
+        console.log("setting products quickly");
         setProducts(data.slice(0, 4));
       }
     } catch (err) {
-      Sentry.captureException(new Error('app unable to load products: ' + err));
+      Sentry.captureException(new Error("app unable to load products: " + err));
     }
   }
 
@@ -90,26 +95,26 @@ function Products({ frontendSlowdown, backend, productsApi, productsExtremelySlo
     fixed with hooks (no transform on that class method anymore)"
   */
   async function getProducts(frontendSlowdown) {
-    [('/api', '/connect', '/organization')].forEach((endpoint, activeSpan) => {
+    [("/api", "/connect", "/organization")].forEach((endpoint, activeSpan) => {
       fetch(backend + endpoint, {
-        method: 'GET',
-        headers: { 'Content-Type': 'application/json' },
+        method: "GET",
+        headers: { "Content-Type": "application/json" },
       }).catch((err) => {
         // If there's an error, it won't stop the Products http request and page from loading
         Sentry.captureException(err);
       });
     });
     const productsEndpoint = determineProductsEndpoint();
-    Sentry.startSpan({ name: "Fetch Products"}, async (span) => {
+    Sentry.startSpan({ name: "Fetch Products" }, async (span) => {
       const stopMeasurement = measureRequestDuration(productsEndpoint, span);
       const response = await fetch(backend + productsEndpoint, {
-        method: 'GET',
-        headers: { 'Content-Type': 'application/json' },
+        method: "GET",
+        headers: { "Content-Type": "application/json" },
       });
       const data = await response.json();
 
       if (!response.ok) {
-        Sentry.setContext('err', {
+        Sentry.setContext("err", {
           status: response.status,
           statusText: response.statusText,
         });
@@ -117,15 +122,15 @@ function Products({ frontendSlowdown, backend, productsApi, productsExtremelySlo
       }
       renderProducts(data);
       stopMeasurement();
-    })
+    });
   }
 
   useEffect(() => {
-     try {
-      getProducts(frontendSlowdown)
-     } catch (error) {
-      Sentry.captureException(error)
-     }
+    try {
+      getProducts(frontendSlowdown);
+    } catch (error) {
+      Sentry.captureException(error);
+    }
   }, []);
 
   return products.length > 0 ? (
@@ -133,11 +138,10 @@ function Products({ frontendSlowdown, backend, productsApi, productsExtremelySlo
       <ul className="products-list">
         {products.map((product, i) => {
           const averageRating = (
-            product.reviews.reduce((a, b) => a + (b['rating'] || 0), 0) /
-            product.reviews.length
+            product.reviews.reduce((a, b) => a + (b["rating"] || 0), 0) / product.reviews.length
           ).toFixed(1);
 
-          let stars = [1, 2, 3, 4, 5].map((index) => {
+          const stars = [1, 2, 3, 4, 5].map((index) => {
             if (index <= averageRating) {
               return (
                 <span className="star" key={index}>
@@ -161,7 +165,7 @@ function Products({ frontendSlowdown, backend, productsApi, productsExtremelySlo
     </div>
   ) : (
     <div className="loader-container">
-      <Loader type="ThreeDots" color="#f6cfb2" height={150} width={150} />
+      <PulseLoader color="#f6cfb2" size={150} />
     </div>
   );
 }
@@ -174,5 +178,5 @@ const mapStateToProps = (state, ownProps) => {
 };
 
 export default connect(mapStateToProps, { setProducts, addProduct })(
-  Sentry.withProfiler(Products, { name: 'Products' })
+  Sentry.withProfiler(Products, { name: "Products" }),
 );

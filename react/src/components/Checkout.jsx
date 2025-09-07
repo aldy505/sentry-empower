@@ -1,47 +1,46 @@
-import React, { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import measureRequestDuration from '../utils/measureRequestDuration';
-import './checkout.css';
-import * as Sentry from '@sentry/react';
-import { connect } from 'react-redux';
-import Loader from 'react-loader-spinner';
-import { countItemsInCart } from '../utils/cart';
-import { getTag } from '../utils/utils';
+import React, { useEffect, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import measureRequestDuration from "../utils/measureRequestDuration";
+import "./checkout.css";
+import * as Sentry from "@sentry/react";
+import { connect } from "react-redux";
+import { PulseLoader } from "react-spinners";
+import { countItemsInCart } from "../utils/cart";
+import { getTag } from "../utils/utils";
 
 function Checkout({ backend, rageclick, checkout_success, cart }) {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   let initialFormValues;
-  let se = sessionStorage.getItem('se');
+  const se = sessionStorage.getItem("se");
   const seTdaPrefixRegex = /[^-]+-tda-[^-]+-/;
   if (se && seTdaPrefixRegex.test(se)) {
     // we want form actually filled out in TDA for a realistic-looking Replay
     initialFormValues = {
-      email: '',
-      subscribe: '',
-      firstName: '',
-      lastName: '',
-      address: '',
-      city: '',
-      country: '',
-      state: '',
-      zipCode: '',
+      email: "",
+      subscribe: "",
+      firstName: "",
+      lastName: "",
+      address: "",
+      city: "",
+      country: "",
+      state: "",
+      zipCode: "",
     };
   } else {
     initialFormValues = {
-      email: 'plant.lover@example.com',
-      subscribe: '',
-      firstName: 'Jane',
-      lastName: 'Greenthumb',
-      address: '123 Main Street',
-      city: 'San Francisco',
-      country: 'United States of America',
-      state: 'CA',
-      zipCode: '94122',
+      email: "plant.lover@example.com",
+      subscribe: "",
+      firstName: "Jane",
+      lastName: "Greenthumb",
+      address: "123 Main Street",
+      city: "San Francisco",
+      country: "United States of America",
+      state: "CA",
+      zipCode: "94122",
     };
   }
   const [form, setForm] = useState(initialFormValues);
-
 
   async function checkout(cart, checkout_span) {
     console.log("Checkout called with cart:", cart);
@@ -49,59 +48,65 @@ function Checkout({ backend, rageclick, checkout_success, cart }) {
     const itemsInCart = countItemsInCart(cart);
     console.log("Calculated itemsInCart:", itemsInCart);
 
-    if (!checkout_span || typeof checkout_span.setAttribute !== 'function') {
-        console.error("Invalid checkout_span object:", checkout_span);
-        return;
+    if (!checkout_span || typeof checkout_span.setAttribute !== "function") {
+      console.error("Invalid checkout_span object:", checkout_span);
+      return;
     }
 
     checkout_span.setAttribute("checkout.click", 1);
     checkout_span.setAttribute("items_at_checkout", itemsInCart);
     checkout_span.setAttribute("checkout.order.total", cart.total);
 
-    let tags = { 'backendType': getTag('backendType'), 'cexp': getTag('cexp'), 'items_at_checkout': itemsInCart, 'checkout.click': 1 };
+    const tags = {
+      backendType: getTag("backendType"),
+      cexp: getTag("cexp"),
+      items_at_checkout: itemsInCart,
+      "checkout.click": 1,
+    };
     checkout_span.setAttributes(tags);
-    const stopMeasurement = measureRequestDuration('/checkout');
+    const stopMeasurement = measureRequestDuration("/checkout");
 
-    const response = await fetch(backend + '/checkout?v2=true', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+    const response = await fetch(backend + "/checkout?v2=true", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         cart: cart,
         form: form,
         validate_inventory: checkout_success ? "false" : "true",
       }),
     })
-    .catch((error) => {
-      return { ok: false, error: error};
-    })
-    .then((res) => {
-      stopMeasurement();
-      return res;
-    });
+      .catch((error) => {
+        return { ok: false, error: error };
+      })
+      .then((res) => {
+        stopMeasurement();
+        return res;
+      });
     if (!response.ok) {
       checkout_span.setAttribute("checkout.error", 1);
 
       if (!response.error || response.status === undefined) {
         checkout_span.setAttribute("status", response.status);
 
-        throw new Error(
-          [response.status, response.statusText || ' Internal Server Error'].join(
-            ' -'
-          )
-        );
+        throw new Error([response.status, response.statusText || " Internal Server Error"].join(" -"));
       } else {
         checkout_span.setAttribute("status", "unknown_error");
         if (response.error instanceof TypeError && response.error.message === "Failed to fetch") {
           /* A fetch() promise only rejects when e.g. badly-formed request URL or a network error. It does not reject if
           the server responds with HTTP 4xx or 5xx, etc. However some server frameworks might not attach CORS headers 
           when returning HTTP 500 causing promise to reject and response object not be accessible. */
-          Sentry.captureException(new Error("Fetch promise rejected in Checkout due to either an actual network issue, malformed URL, etc or CORS headers not set on HTTP 500: " + response.error));
+          Sentry.captureException(
+            new Error(
+              "Fetch promise rejected in Checkout due to either an actual network issue, malformed URL, etc or CORS headers not set on HTTP 500: " +
+                response.error,
+            ),
+          );
         } else {
           Sentry.captureException(new Error("Checkout request failed: " + response.error));
         }
       }
     } else {
-      checkout_span.setAttribute("checkout.success", 1)
+      checkout_span.setAttribute("checkout.success", 1);
     }
 
     return response;
@@ -112,7 +117,7 @@ function Checkout({ backend, rageclick, checkout_success, cart }) {
 
   function handleInputChange(event) {
     const target = event.target;
-    const value = target.type === 'checkbox' ? target.checked : target.value;
+    const value = target.type === "checkbox" ? target.checked : target.value;
     const name = target.name;
     setForm({ ...form, [name]: value });
   }
@@ -126,45 +131,42 @@ function Checkout({ backend, rageclick, checkout_success, cart }) {
       return;
     }
 
-    Sentry.startSpan({
-      name: 'Submit Checkout Form',
-      forceTransaction: true,
-    }, async (span) => {
-      let hadError = false;
+    Sentry.startSpan(
+      {
+        name: "Submit Checkout Form",
+        forceTransaction: true,
+      },
+      async (span) => {
+        let hadError = false;
 
-      window.scrollTo({
-        top: 0,
-        behavior: 'auto',
-      });
+        window.scrollTo({
+          top: 0,
+          behavior: "auto",
+        });
 
-      setLoading(true);
+        setLoading(true);
 
-      try {
-        await checkout(cart, span);
-      } catch (error) {
-        Sentry.captureException(error);
-        hadError = true;
-      }
-      setLoading(false);
+        try {
+          await checkout(cart, span);
+        } catch (error) {
+          Sentry.captureException(error);
+          hadError = true;
+        }
+        setLoading(false);
 
-      if (hadError) {
-        navigate('/error');
-      } else {
-        navigate('/complete');
-      }
-    })
+        if (hadError) {
+          navigate("/error");
+        } else {
+          navigate("/complete");
+        }
+      },
+    );
   }
 
   return (
     <div className="checkout-container">
       {loading ? (
-        <Loader
-          type="ThreeDots"
-          color="#f6cfb2"
-          className="sentry-unmask"
-          height={150}
-          width={150}
-        />
+        <PulseLoader color="#f6cfb2" size={150} className="sentry-unmask" />
       ) : (
         <>
           <h2 className="sentry-unmask">Checkout</h2>
@@ -279,11 +281,7 @@ function Checkout({ backend, rageclick, checkout_success, cart }) {
               placeholder="45678"
             />
 
-            <input
-              type="submit"
-              className="complete-checkout-btn sentry-unmask"
-              defaultValue="Complete order"
-            />
+            <input type="submit" className="complete-checkout-btn sentry-unmask" defaultValue="Complete order" />
           </form>
           <Link to="/cart" className="sentry-unmask">
             Back to cart
@@ -301,7 +299,4 @@ const mapStateToProps = (state, ownProps) => {
   };
 };
 
-export default connect(
-  mapStateToProps,
-  {}
-)(Sentry.withProfiler(Checkout, { name: 'Checkout' }));
+export default connect(mapStateToProps, {})(Sentry.withProfiler(Checkout, { name: "Checkout" }));

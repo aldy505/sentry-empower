@@ -1,5 +1,4 @@
-
-import * as Sentry from '@sentry/react';
+import * as Sentry from "@sentry/react";
 
 /**
  * Measure the duration of a request and send it to Sentry as a custom metric
@@ -8,16 +7,16 @@ import * as Sentry from '@sentry/react';
  */
 export default function measureRequestDuration(endpoint, requestSpan) {
   const start = Date.now();
-  
+
   function stopMeasurement() {
     const end = Date.now();
     const duration = end - start;
     if (requestSpan !== undefined) {
       requestSpan.setAttributes({
         "request.duration": duration,
-        "unit": "milisecond",
-        "endpoint": endpoint
-      })
+        unit: "milisecond",
+        endpoint: endpoint,
+      });
     }
   }
 

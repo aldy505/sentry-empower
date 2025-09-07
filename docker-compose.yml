@@ -25,6 +25,10 @@ services:
         <<: *x-base-env
         REACT_APP_DSN:
         PUBLIC_BASE_URL:
+        SENTRY_URL: "" # set to your self-hosted Sentry base URL
+        SENTRY_AUTH_TOKEN: "" # set to your self-hosted Sentry auth token
+        SENTRY_ORG: "" # set to your self-hosted Sentry organization
+        SENTRY_PROJECT: "" # set to your self-hosted Sentry project
     init: true
   flask:
     build: flask

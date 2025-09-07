@@ -10,11 +10,13 @@ export function isOddReleaseWeek() {
 }
 
 function getReleaseWeek(release) {
-  var [year, month, week] = release.split('.').map((x) => parseInt(x));
-  var pastYears = (year - 22) * 59 - Math.floor((year - 21) / 4);
-  return (
-    pastYears + (month - 1) * 5 + (month > 2 && year % 4 != 0 ? -1 : 0) + week
-  );
+  if (!release) {
+    return 0;
+  }
+  
+  const [year, month, week] = release.split(".").map((x) => parseInt(x));
+  const pastYears = (year - 22) * 59 - Math.floor((year - 21) / 4);
+  return pastYears + (month - 1) * 5 + (month > 2 && year % 4 != 0 ? -1 : 0) + week;
 }
 
 // is blocking, unlike setTimeout

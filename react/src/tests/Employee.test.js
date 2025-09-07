@@ -1,40 +1,44 @@
-import React from 'react';
-import { render, screen, waitFor } from '@testing-library/react';
-import { MemoryRouter, Routes, Route } from 'react-router-dom';
-import * as Sentry from '@sentry/react';
-import Employee from '../components/Employee';
+import * as Sentry from "@sentry/react";
+import { render, screen, waitFor } from "@testing-library/react";
+import React from "react";
+import { MemoryRouter, Route, Routes } from "react-router-dom";
+import Employee from "../components/Employee";
 
-jest.mock('@sentry/react', () => ({
+jest.mock("@sentry/react", () => ({
   withProfiler: (component) => component,
 }));
 
-jest.mock('./employees/1', () => ({
-  default: {
-    img: 'image-url.jpg',
-    name: 'John Doe',
-    bio: 'A brief bio of John Doe.',
-  },
-}), { virtual: true });
+jest.mock(
+  "./employees/1",
+  () => ({
+    default: {
+      img: "image-url.jpg",
+      name: "John Doe",
+      bio: "A brief bio of John Doe.",
+    },
+  }),
+  { virtual: true },
+);
 
-describe('Employee Component', () => {
-  it('displays loading initially', () => {
+describe("Employee Component", () => {
+  it("displays loading initially", () => {
     render(
-      <MemoryRouter initialEntries={['/employee/keith']}>
+      <MemoryRouter initialEntries={["/employee/keith"]}>
         <Routes>
           <Route path="/employee/:id" element={<Employee />} />
         </Routes>
-      </MemoryRouter>
+      </MemoryRouter>,
     );
     // expect(screen.getByText(/Loading/i)).toBeInTheDocument();
   });
 
-  it('renders employee data correctly', async () => {
+  it("renders employee data correctly", async () => {
     render(
-      <MemoryRouter initialEntries={['/employee/keith']}>
+      <MemoryRouter initialEntries={["/employee/keith"]}>
         <Routes>
           <Route path="/employee/:id" element={<Employee />} />
         </Routes>
-      </MemoryRouter>
+      </MemoryRouter>,
     );
 
     // await waitFor(() => expect(screen.getByRole('img')).toHaveAttribute('src', 'image-url.jpg'));

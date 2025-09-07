@@ -1,16 +1,16 @@
-import { Link } from 'react-router-dom';
-import './complete.css';
-import { useEffect, useState } from 'react';
-import { connect } from 'react-redux';
-import * as Sentry from '@sentry/react';
-import { resetCart } from '../actions';
+import { Link } from "react-router-dom";
+import "./complete.css";
+import * as Sentry from "@sentry/react";
+import { useEffect, useState } from "react";
+import { connect } from "react-redux";
+import { resetCart } from "../actions";
 
-function Complete({cart, resetCart}) {
+function Complete({ cart, resetCart }) {
   const [orderedCart] = useState(cart);
 
   useEffect(() => {
     resetCart();
-    
+
     window.setTimeout(() => {
       Sentry.getReplay().flush();
     }, 1000);
@@ -32,9 +32,8 @@ function Complete({cart, resetCart}) {
       </h4>
       <p>A confirmation email has been sent to the address you provided.</p>
       <p>
-        Your plants will thank you. You can <Link to="/">track your order</Link>{' '}
-        or <Link to="/">contact us</Link> if you have any questions. Have a
-        sunny day.
+        Your plants will thank you. You can <Link to="/">track your order</Link> or <Link to="/">contact us</Link> if
+        you have any questions. Have a sunny day.
       </p>
     </div>
   );
@@ -47,6 +46,4 @@ const mapStateToProps = (state, ownProps) => {
   };
 };
 
-export default connect(mapStateToProps, { resetCart })(
-  Sentry.withProfiler(Complete, { name: 'Complete' })
-);
+export default connect(mapStateToProps, { resetCart })(Sentry.withProfiler(Complete, { name: "Complete" }));

@@ -21,7 +21,9 @@
   background-color: #fffff9;
   padding: 1.5rem;
   border-radius: 0.25rem;
-  box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.07), 0 6px 20px 0 rgba(0, 0, 0, 0.05);
+  box-shadow:
+    0 4px 8px 0 rgba(0, 0, 0, 0.07),
+    0 6px 20px 0 rgba(0, 0, 0, 0.05);
 }
 
 .products-list li img {

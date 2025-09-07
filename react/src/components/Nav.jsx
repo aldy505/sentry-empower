@@ -1,11 +1,11 @@
-import { Link } from 'react-router-dom';
-import './nav.css';
-import * as Sentry from '@sentry/react';
+import { Link } from "react-router-dom";
+import "./nav.css";
+import * as Sentry from "@sentry/react";
 
-import { connect } from 'react-redux';
-import { resetCart, addProduct, setProducts } from '../actions';
+import { connect } from "react-redux";
+import { addProduct, resetCart, setProducts } from "../actions";
 
-import EPlogo from '../assets/empowerplant-logo.svg';
+import EPlogo from "../assets/empowerplant-logo.svg";
 
 function Nav({ cart, frontendSlowdown }) {
   return (
@@ -32,7 +32,7 @@ function Nav({ cart, frontendSlowdown }) {
                   <span className="sentry-unmask">)</span>
                 </span>
               ) : (
-                ''
+                ""
               )}
             </Link>
           </div>
@@ -50,10 +50,7 @@ function Nav({ cart, frontendSlowdown }) {
             <Link to="/about" className="sentry-unmask">
               About
             </Link>
-            <Link
-              to={frontendSlowdown ? '/products-fes' : '/products'}
-              className="sentry-unmask"
-            >
+            <Link to={frontendSlowdown ? "/products-fes" : "/products"} className="sentry-unmask">
               Products
             </Link>
             <Link to="/cart">
@@ -65,7 +62,7 @@ function Nav({ cart, frontendSlowdown }) {
                   <span className="sentry-unmask">)</span>
                 </span>
               ) : (
-                ''
+                ""
               )}
             </Link>
           </div>
@@ -83,5 +80,5 @@ const mapStateToProps = (state, ownProps) => {
 };
 
 export default connect(mapStateToProps, { resetCart, addProduct, setProducts })(
-  Sentry.withProfiler(Nav, { name: 'Nav' })
+  Sentry.withProfiler(Nav, { name: "Nav" }),
 );

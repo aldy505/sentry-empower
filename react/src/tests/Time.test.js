@@ -1,10 +1,10 @@
 // time.test.js
-import { sleep, isOddReleaseWeek, busy_sleep } from '../utils/time';
+import { busy_sleep, isOddReleaseWeek, sleep } from "../utils/time";
 
 // Mocking the environment variable for testing isOddReleaseWeek
 const originalEnv = process.env;
 
-describe('time.js unit tests', () => {
+describe("time.js unit tests", () => {
   beforeAll(() => {
     jest.useFakeTimers();
   });
@@ -18,7 +18,7 @@ describe('time.js unit tests', () => {
     jest.useRealTimers();
   });
 
-  test('sleep function should wait for the given milliseconds', async () => {
+  test("sleep function should wait for the given milliseconds", async () => {
     const sleepPromise = sleep(1000);
     jest.advanceTimersByTime(1000);
     await sleepPromise;
@@ -27,17 +27,17 @@ describe('time.js unit tests', () => {
     // expect(setTimeout).toHaveBeenLastCalledWith(expect.any(Function), 1000);
   });
 
-  test('isOddReleaseWeek should return false for odd release weeks', () => {
-    process.env.REACT_APP_RELEASE = '24.2.3'; // 2024, February, week 3
+  test("isOddReleaseWeek should return false for odd release weeks", () => {
+    process.env.REACT_APP_RELEASE = "24.2.3"; // 2024, February, week 3
     expect(isOddReleaseWeek()).toBe(false);
   });
 
-  test('isOddReleaseWeek should return false for even release weeks', () => {
-    process.env.REACT_APP_RELEASE = '24.2.4'; // 2024, February, week 4
+  test("isOddReleaseWeek should return false for even release weeks", () => {
+    process.env.REACT_APP_RELEASE = "24.2.4"; // 2024, February, week 4
     expect(isOddReleaseWeek()).toBe(true);
   });
 
-  test('busy_sleep function should block for the given milliseconds', () => {
+  test("busy_sleep function should block for the given milliseconds", () => {
     const start = Date.now();
     busy_sleep(100);
     const end = Date.now();

@@ -1,10 +1,4 @@
-import {
-  ADD_PRODUCT,
-  REMOVE_PRODUCT,
-  RESET_CART,
-  SET_PRODUCTS,
-  SET_FLAG,
-} from './types';
+import { ADD_PRODUCT, REMOVE_PRODUCT, RESET_CART, SET_FLAG, SET_PRODUCTS } from "./types";
 
 export const addProduct = (product) => ({
   type: ADD_PRODUCT,

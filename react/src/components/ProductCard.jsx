@@ -1,32 +1,29 @@
-import { useNavigate } from 'react-router-dom';
-import './products.css';
-import * as Sentry from '@sentry/react';
-import { connect } from 'react-redux';
-import { setProducts, addProduct, setFlag } from '../actions';
+import { useNavigate } from "react-router-dom";
+import "./products.css";
+import * as Sentry from "@sentry/react";
+import { connect } from "react-redux";
+import { addProduct, setFlag, setProducts } from "../actions";
 
 function ProductCard(props) {
-  let inventory = [3, 4, 5, 6]
+  let inventory = [3, 4, 5, 6];
   if (props.addToCartJsError) {
-    inventory = undefined
+    inventory = undefined;
   }
 
   const navigate = useNavigate();
   const product = props.product;
-  const itemLink = '/product/' + product.id;
+  const itemLink = "/product/" + product.id;
   const stars = props.stars;
 
   function validate_inventory(product) {
-    return product && inventory.includes(product.id)
+    return product && inventory.includes(product.id);
   }
 
   return (
     <li key={product.id}>
       <div
         onClick={(event) => {
-          if (
-            event.target.id !== 'addToCart' &&
-            event.target.parentNode.id !== 'addToCart'
-          ) {
+          if (event.target.id !== "addToCart" && event.target.parentNode.id !== "addToCart") {
             navigate(itemLink, { state: product });
           }
         }}
@@ -64,5 +61,5 @@ const mapStateToProps = (state, ownProps) => {
 };
 
 export default connect(mapStateToProps, { setProducts, addProduct, setFlag })(
-  Sentry.withProfiler(ProductCard, { name: 'ProductCard' })
+  Sentry.withProfiler(ProductCard, { name: "ProductCard" }),
 );

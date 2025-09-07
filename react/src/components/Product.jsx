@@ -1,9 +1,9 @@
-import React, { useState, useEffect } from 'react';
-import './product.css';
-import * as Sentry from '@sentry/react';
-import { useLocation } from 'react-router-dom';
-import { connect } from 'react-redux';
-import { addProduct } from '../actions';
+import React, { useEffect, useState } from "react";
+import "./product.css";
+import * as Sentry from "@sentry/react";
+import { connect } from "react-redux";
+import { useLocation } from "react-router-dom";
+import { addProduct } from "../actions";
 
 function Product(props) {
   const [product, setProduct] = useState();
@@ -17,10 +17,7 @@ function Product(props) {
 
   let averageRating;
   if (product) {
-    averageRating = (
-      product.reviews.reduce((a, b) => a + (b['rating'] || 0), 0) /
-      product.reviews.length
-    ).toFixed(1);
+    averageRating = (product.reviews.reduce((a, b) => a + (b["rating"] || 0), 0) / product.reviews.length).toFixed(1);
   }
 
   return product ? (
@@ -32,10 +29,7 @@ function Product(props) {
         <h1>{product.title}</h1>
         <p>{product.description}</p>
         <p>{product.descriptionfull}</p>
-        <button
-          className="add-cart-btn"
-          onClick={() => props.addProduct(product)}
-        >
+        <button className="add-cart-btn" onClick={() => props.addProduct(product)}>
           <span className="sentry-unmask">Add to cart —</span> ${product.price}
           .00
         </button>
@@ -54,6 +48,4 @@ const mapStateToProps = (state, ownProps) => {
   };
 };
 
-export default connect(mapStateToProps, { addProduct })(
-  Sentry.withProfiler(Product, { name: 'Product' })
-);
+export default connect(mapStateToProps, { addProduct })(Sentry.withProfiler(Product, { name: "Product" }));

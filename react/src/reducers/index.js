@@ -21,22 +21,22 @@ const reducer = (state = structuredClone(initialState), action) => {
   const { payload, type } = action;
 
   switch (type) {
-    case 'ADD_PRODUCT':
+    case "ADD_PRODUCT": {
       var cart = Object.assign({}, state.cart);
-      let item = cart.items.find((x) => x.id === payload.product.id);
+      const item = cart.items.find((x) => x.id === payload.product.id);
       if (!item) cart.items.push(payload.product);
-      cart.quantities[payload.product.id] =
-        cart.quantities[payload.product.id] || 0;
+      cart.quantities[payload.product.id] = cart.quantities[payload.product.id] || 0;
       cart.quantities[payload.product.id]++;
       cart.total = cart.items.reduce((a, item) => {
         const itemTotal = item.price * cart.quantities[item.id];
         return a + itemTotal;
       }, 0);
       return Object.assign({}, newState(cart, state.products));
+    }
 
-    case 'REMOVE_PRODUCT':
+    case "REMOVE_PRODUCT": {
       var cart1 = Object.assign({}, state.cart);
-      let item1 = cart1.items.find((x) => x.id === payload.product.id);
+      const item1 = cart1.items.find((x) => x.id === payload.product.id);
       if (!item1) Object.assign({}, newState(cart1, state.products));
       cart1.quantities[payload.product.id]--;
       if (cart1.quantities[payload.product.id] === 0) {
@@ -50,19 +50,17 @@ const reducer = (state = structuredClone(initialState), action) => {
         return a + itemTotal;
       }, 0);
       return Object.assign({}, newState(cart1, state.products));
+    }
 
-    case 'RESET_CART':
+    case "RESET_CART":
       return Object.assign({}, newState(structuredClone(initialState.cart), state.products));
 
-    case 'SET_PRODUCTS':
+    case "SET_PRODUCTS":
       return Object.assign({}, newState(state.cart, payload.products));
 
-    case 'SET_FLAG':
+    case "SET_FLAG":
       // Toggles the state of the flag, which changes props in ProductCard.js and gives us the ui.react.update span
-      return Object.assign(
-        {},
-        newState(state.cart, state.products, !state.flag)
-      );
+      return Object.assign({}, newState(state.cart, state.products, !state.flag));
 
     default:
       return state;

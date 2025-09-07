@@ -1,30 +1,32 @@
-import React from 'react';
-import { render, screen, waitFor } from '@testing-library/react';
-import { Provider } from 'react-redux';
-import configureStore from 'redux-mock-store';
-import Products from '../components/Products';
-import * as Sentry from '@sentry/react';
-import measureRequestDuration from '../utils/measureRequestDuration';
+import * as Sentry from "@sentry/react";
+import { render, screen, waitFor } from "@testing-library/react";
+import React from "react";
+import { Provider } from "react-redux";
+import configureStore from "redux-mock-store";
+import Products from "../components/Products";
+import measureRequestDuration from "../utils/measureRequestDuration";
 
-jest.mock('../utils/measureRequestDuration');
-jest.mock('react-loader-spinner', () => () => <div>Loader</div>);
-jest.mock('@sentry/react', () => ({
-  withScope: jest.fn((fn) => fn({ _tags: { se: 'mocked_se' } })),
+jest.mock("../utils/measureRequestDuration");
+jest.mock("react-loader-spinner", () => () => <div>Loader</div>);
+jest.mock("@sentry/react", () => ({
+  withScope: jest.fn((fn) => fn({ _tags: { se: "mocked_se" } })),
   captureException: jest.fn(),
   setContext: jest.fn(),
   startSpan: jest.fn(),
   withProfiler: (Component) => Component,
 }));
 
-jest.mock('../components/ProductCard', () => ({ product, stars }) => (
+jest.mock("../components/ProductCard", () => ({ product, stars }) => (
   <div data-testid="product-card">
     <h2>{product.title}</h2>
     <p>{product.description}</p>
-    <p>{stars} ({product.reviews.length})</p>
+    <p>
+      {stars} ({product.reviews.length})
+    </p>
   </div>
 ));
 
-describe('Products Component', () => {
+describe("Products Component", () => {
   const mockStore = configureStore([]);
   let store;
 
@@ -40,18 +42,18 @@ describe('Products Component', () => {
           Promise.resolve([
             {
               id: 1,
-              title: 'Product 1',
-              description: 'Description 1',
+              title: "Product 1",
+              description: "Description 1",
               reviews: [{ rating: 5 }],
             },
             {
               id: 2,
-              title: 'Product 2',
-              description: 'Description 2',
+              title: "Product 2",
+              description: "Description 2",
               reviews: [{ rating: 4 }],
             },
           ]),
-      })
+      }),
     );
     measureRequestDuration.mockReturnValue(jest.fn());
   });
@@ -60,21 +62,21 @@ describe('Products Component', () => {
     jest.clearAllMocks();
   });
 
-  test('renders loader initially', () => {
+  test("renders loader initially", () => {
     render(
       <Provider store={store}>
         <Products frontendSlowdown={false} backend="http://backend" />
-      </Provider>
+      </Provider>,
     );
 
     // expect(screen.getByText('Loader')).toBeInTheDocument();
   });
 
-  test('fetches and renders products', async () => {
+  test("fetches and renders products", async () => {
     render(
       <Provider store={store}>
         <Products frontendSlowdown={false} backend="http://backend" />
-      </Provider>
+      </Provider>,
     );
 
     // await waitFor(() => expect(fetch).toHaveBeenCalledTimes(4)); // 3 background endpoints + 1 products endpoint
@@ -86,11 +88,11 @@ describe('Products Component', () => {
     // expect(screen.getAllByTestId('product-card')).toHaveLength(2);
   });
 
-  test('fetches uncompressed assets when frontendSlowdown is true', async () => {
+  test("fetches uncompressed assets when frontendSlowdown is true", async () => {
     render(
       <Provider store={store}>
         <Products frontendSlowdown={true} backend="http://backend" />
-      </Provider>
+      </Provider>,
     );
 
     // await waitFor(() => expect(fetch).toHaveBeenCalledTimes(4)); // 3 background endpoints + 1 products endpoint
@@ -99,13 +101,13 @@ describe('Products Component', () => {
     // expect(document.querySelector('script[src*="uncompressed_big_file.js"]')).toBeInTheDocument();
   });
 
-  test('captures exception when fetching fails', async () => {
-    global.fetch.mockImplementationOnce(() => Promise.reject('Fetch failed'));
+  test("captures exception when fetching fails", async () => {
+    global.fetch.mockImplementationOnce(() => Promise.reject("Fetch failed"));
 
     render(
       <Provider store={store}>
         <Products frontendSlowdown={false} backend="http://backend" />
-      </Provider>
+      </Provider>,
     );
 
     await waitFor(() => expect(Sentry.captureException).toHaveBeenCalledTimes(1));

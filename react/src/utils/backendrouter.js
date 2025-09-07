@@ -1,4 +1,4 @@
-const DEFAULT_BACKEND = 'flask';
+const DEFAULT_BACKEND = "flask";
 
 const SUPPORTED_BACKEND_TYPES = {
   flask: process.env.REACT_APP_FLASK_BACKEND,
@@ -29,7 +29,7 @@ const determineBackendType = (desiredBackend) => {
 };
 
 const determineBackendUrl = (backendType) => {
-  return SUPPORTED_BACKEND_TYPES[backendType];
+  return SUPPORTED_BACKEND_TYPES[backendType] ?? "http://localhost:5000";
 };
 
 export { determineBackendType, determineBackendUrl };

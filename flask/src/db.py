@@ -60,19 +60,19 @@ def get_products():
         query = text(
             "SELECT * FROM products WHERE id IN (SELECT id from products, pg_sleep(:sleep_duration))"
         )
-        products = connection.execute(query, sleep_duration=n).fetchall()
+        products = connection.execute(query, {"sleep_duration": n}).fetchall()
 
         for product in products:
             # product_bundles is a "sleepy view", run the following query to get current sleep duration:
             # SELECT pg_get_viewdef('product_bundles', true)
             query = text("SELECT * FROM reviews, product_bundles WHERE productId = :x")
-            reviews = connection.execute(query, x=product.id).fetchall()
+            reviews = connection.execute(query, {"x": product.id}).fetchall()
 
-            result = dict(product)
+            result = product._asdict()
             result["reviews"] = []
 
             for review in reviews:
-                result["reviews"].append(dict(review))
+                result["reviews"].append(review._asdict())
             results.append(result)
 
         with sentry_sdk.start_span(op="serialization", description="json"):
@@ -110,13 +110,13 @@ def get_products_join():
         op="get_products_join.format_results", description="function"
     ) as span:
         for product in products:
-            result = dict(product)
+            result = product._asdict()
             result["reviews"] = []
 
             for review in reviews:
                 productId = review[1]
                 if productId == product["id"]:
-                    result["reviews"].append(dict(review))
+                    result["reviews"].append(review._asdict())
             results.append(result)
         span.set_data("results", results)
 
@@ -146,7 +146,7 @@ def get_inventory(cart):
         with sentry_sdk.start_span(op="get_inventory", description="db.query") as span:
             # Use parameterized query with ANY() to safely handle array of product IDs
             query = text("SELECT * FROM inventory WHERE productId = ANY(:product_ids)")
-            inventory = connection.execute(query, product_ids=productIds).fetchall()
+            inventory = connection.execute(query, {"product_ids": productIds}).fetchall()
             span.set_data("inventory", inventory)
     except Exception as err:
         raise DatabaseConnectionError("get_inventory") from err

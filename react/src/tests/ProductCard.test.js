@@ -1,27 +1,27 @@
-import React from 'react';
-import { render, screen, fireEvent } from '@testing-library/react';
-import { Provider } from 'react-redux';
-import { BrowserRouter as Router } from 'react-router-dom';
-import ProductCard from '../components/ProductCard';
-import configureStore from 'redux-mock-store';
-import * as Sentry from '@sentry/react';
-import { addProduct } from '../actions';
+import * as Sentry from "@sentry/react";
+import { fireEvent, render, screen } from "@testing-library/react";
+import React from "react";
+import { Provider } from "react-redux";
+import { BrowserRouter as Router } from "react-router-dom";
+import configureStore from "redux-mock-store";
+import { addProduct } from "../actions";
+import ProductCard from "../components/ProductCard";
 
 // Mock Sentry
-jest.mock('@sentry/react', () => ({
-  ...jest.requireActual('@sentry/react'),
+jest.mock("@sentry/react", () => ({
+  ...jest.requireActual("@sentry/react"),
   withProfiler: (Component) => Component,
 }));
 
 // Mock react-router-dom's useNavigate
-jest.mock('react-router-dom', () => ({
-  ...jest.requireActual('react-router-dom'),
+jest.mock("react-router-dom", () => ({
+  ...jest.requireActual("react-router-dom"),
   useNavigate: jest.fn(),
 }));
 
 const mockStore = configureStore([]);
 
-describe('ProductCard Component', () => {
+describe("ProductCard Component", () => {
   let store;
   let mockNavigate;
 
@@ -32,7 +32,7 @@ describe('ProductCard Component', () => {
       flag: false,
     });
 
-    mockNavigate = require('react-router-dom').useNavigate;
+    mockNavigate = require("react-router-dom").useNavigate;
     mockNavigate.mockReturnValue(jest.fn()); // Return a mock function for useNavigate
 
     jest.clearAllMocks();
@@ -40,11 +40,11 @@ describe('ProductCard Component', () => {
 
   const product = {
     id: 1,
-    title: 'Sample Product',
-    description: 'This is a sample product description.',
-    img: '/path/to/image.jpg',
+    title: "Sample Product",
+    description: "This is a sample product description.",
+    img: "/path/to/image.jpg",
     price: 100,
-    reviews: ['Good', 'Very good', 'Excellent'],
+    reviews: ["Good", "Very good", "Excellent"],
   };
 
   const props = {
@@ -53,13 +53,13 @@ describe('ProductCard Component', () => {
     addProduct: jest.fn(),
   };
 
-  test('renders ProductCard with product details', () => {
+  test("renders ProductCard with product details", () => {
     render(
       <Provider store={store}>
         <Router>
           <ProductCard {...props} />
         </Router>
-      </Provider>
+      </Provider>,
     );
 
     // expect(screen.getByText('Sample Product')).toBeInTheDocument();
@@ -68,33 +68,33 @@ describe('ProductCard Component', () => {
     // expect(screen.getByText('4 (3)')).toBeInTheDocument();
   });
 
-  test('navigates to product details page on image click', () => {
+  test("navigates to product details page on image click", () => {
     render(
       <Provider store={store}>
         <Router>
           <ProductCard {...props} />
         </Router>
-      </Provider>
+      </Provider>,
     );
 
-    const productImage = screen.getByAltText('product');
+    const productImage = screen.getByAltText("product");
     fireEvent.click(productImage);
 
     // expect(mockNavigate).toHaveBeenCalledWith('/product/1', { state: product });
   });
 
-//   test('adds product to cart on "Add to cart" button click', () => {
-//     render(
-//       <Provider store={store}>
-//         <Router>
-//           <ProductCard {...props} />
-//         </Router>
-//       </Provider>
-//     );
+  //   test('adds product to cart on "Add to cart" button click', () => {
+  //     render(
+  //       <Provider store={store}>
+  //         <Router>
+  //           <ProductCard {...props} />
+  //         </Router>
+  //       </Provider>
+  //     );
 
-//     const addToCartButton = screen.getByText(/Add to cart — \$100.00/);
-//     fireEvent.click(addToCartButton);
+  //     const addToCartButton = screen.getByText(/Add to cart — \$100.00/);
+  //     fireEvent.click(addToCartButton);
 
-//     expect(props.addProduct).toHaveBeenCalledWith(product);
-//   });
-})
+  //     expect(props.addProduct).toHaveBeenCalledWith(product);
+  //   });
+});
