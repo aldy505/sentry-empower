@@ -8,6 +8,7 @@ gem "sinatra-cors"
 # sinatra needs an app server
 gem 'webrick'
 
+gem "stackprof"
 gem "sentry-ruby"
 
 group :test do

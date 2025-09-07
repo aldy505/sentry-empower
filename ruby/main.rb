@@ -5,7 +5,8 @@ Dotenv.load('gloud-ignore-workaround.env')
 
 Sentry.init do |config|
   config.dsn = ENV['RUBY_DSN']
-  config.release = "22.8.2"
+  config.release = ENV['RELEASE']
+  config.enable_logs = true
   config.traces_sample_rate = 1.0
   config.traces_sampler = lambda do |sampling_context|
 
@@ -22,6 +23,7 @@ Sentry.init do |config|
     
     true
   end
+  config.profiles_sample_rate = 1.0
 end
 
 # This must be imported after sentry-ruby for transactions to work
