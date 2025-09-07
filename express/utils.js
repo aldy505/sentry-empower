@@ -43,4 +43,4 @@ const getIteratorProcessor = async function (products) {
   }
 };
 
-export default { getIteratorProcessor };
+export { getIteratorProcessor };
