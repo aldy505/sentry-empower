@@ -158,7 +158,7 @@ app.get("/organization", (req, res) => {
   res.send(`express /organization`);
 });
 
-app.use(Sentry.setupExpressErrorHandler());
+Sentry.setupExpressErrorHandler(app);
 
 const PORT = process.env.PORT;
 app.listen(PORT, () => {
