@@ -1,6 +1,7 @@
 from celery import Celery, signals
-import sentry_sdk, os, dotenv
+import sentry_sdk
 import os
+import dotenv
 
 dotenv.load_dotenv()
 
@@ -9,14 +10,17 @@ redis_port = int(os.environ.get("FLASK_LOCAL_REDISPORT", 6379))
 
 redis_url = f"redis://{redis_host}:{redis_port}/1"
 
-app = Celery('subscribe',
-             broker=redis_url,
-             backend=redis_url,
-             include=['src.queues.tasks'],
-             broker_connection_retry_on_startup=True)
+app = Celery(
+    "subscribe",
+    broker=redis_url,
+    backend=redis_url,
+    include=["src.queues.tasks"],
+    broker_connection_retry_on_startup=True,
+)
 
 # Set default queue name
-app.conf.task_default_queue = 'celery-new-subscriptions'
+app.conf.task_default_queue = "celery-new-subscriptions"
+
 
 # Initialize Sentry SDK on Celery startup
 @signals.celeryd_init.connect
@@ -34,5 +38,6 @@ def init_sentry(**_kwargs):
         enable_logs=True,
     )
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     app.start()

@@ -19,7 +19,7 @@
 #     # @patch('..main.sentry_sdk')
 #     def test_checkout_success(self):
 #         # mock_get_inventory.return_value = [{'count': 10, 'productId': 1}]
-        
+
 #         from ..main import app  # Import here to apply patched environment variables
 #         with app.test_client() as client:
 #             order = {
@@ -27,10 +27,10 @@
 #                 "form": {"paymentMethod": "card"}
 #             }
 #             response = client.post('/checkout', data=json.dumps(order), content_type='application/json')
-            
+
 #             # self.assertEqual(response.status_code, 200)
 #             # self.assertEqual(response.data.decode(), "success")
-            
+
 #             # mock_sentry.metrics.incr.assert_called_with(
 #             #     key="endpoint_call",
 #             #     value=1,
@@ -41,11 +41,11 @@
 #     # @patch('..main.sentry_sdk')
 #     # def test_products_success(self, mock_sentry, mock_get_products):
 #     #     mock_get_products.return_value = json.dumps([{"id": 1, "description": "Product 1"}])
-        
+
 #     #     from ..main import app  # Import here to apply patched environment variables
 #     #     with app.test_client() as client:
 #     #         response = client.get('/products')
-            
+
 #     #         self.assertEqual(response.status_code, 200)
 #     #         self.assertIn('Product 1', response.data.decode())
 #     #         mock_sentry.metrics.incr.assert_called_with(
@@ -58,11 +58,11 @@
 #     # @patch('..main.sentry_sdk')
 #     # def test_products_join_success(self, mock_sentry, mock_get_products_join):
 #     #     mock_get_products_join.return_value = json.dumps([{"id": 1, "description": "Product 1"}])
-        
+
 #     #     from ..main import app  # Import here to apply patched environment variables
 #     #     with app.test_client() as client:
 #     #         response = client.get('/products-join')
-            
+
 #     #         self.assertEqual(response.status_code, 200)
 #     #         self.assertIn('Product 1', response.data.decode())
 #     #         mock_sentry.metrics.incr.assert_called_with(
@@ -76,7 +76,7 @@
 #     #     from ..main import app  # Import here to apply patched environment variables
 #     #     with app.test_client() as client:
 #     #         response = client.get('/success')
-            
+
 #     #         self.assertEqual(response.status_code, 200)
 #     #         self.assertEqual(response.data.decode(), "success from flask")
 #     #         mock_sentry.metrics.incr.assert_called_with(
@@ -90,7 +90,7 @@
 #     #     from ..main import app  # Import here to apply patched environment variables
 #     #     with app.test_client() as client:
 #     #         response = client.get('/handled')
-            
+
 #     #         self.assertEqual(response.status_code, 200)
 #     #         self.assertEqual(response.data.decode(), "failed")
 #     #         mock_capture_exception.assert_called_once()

@@ -14,17 +14,22 @@ from .db import decrement_inventory, get_products, get_products_join, get_invent
 from .utils import parseHeaders, get_iterator
 from .queues.tasks import sendEmail
 import sentry_sdk
-from sentry_sdk.integrations.flask import FlaskIntegration
-from sentry_sdk.integrations.sqlalchemy import SqlalchemyIntegration
 from sentry_sdk.integrations.redis import RedisIntegration
-from sentry_sdk.integrations.logging import LoggingIntegration
 from sentry_sdk.ai.monitoring import ai_track
-from celery import Celery, states
-from celery.exceptions import Ignore
 
-RUBY_CUSTOM_HEADERS = ['se', 'customerType', 'email']
-pests = ["aphids", "thrips", "spider mites", "lead miners", "scale", "whiteflies", "earwigs", "cutworms", "mealybugs",
-         "fungus gnats"]
+RUBY_CUSTOM_HEADERS = ["se", "customerType", "email"]
+pests = [
+    "aphids",
+    "thrips",
+    "spider mites",
+    "lead miners",
+    "scale",
+    "whiteflies",
+    "earwigs",
+    "cutworms",
+    "mealybugs",
+    "fungus gnats",
+]
 
 RELEASE = None
 DSN = None
@@ -32,15 +37,15 @@ ENVIRONMENT = None
 RUBY_BACKEND = None
 RUN_SLOW_PROFILE = None
 
-NORMAL_SLOW_PROFILE = 2 # seconds
+NORMAL_SLOW_PROFILE = 2  # seconds
 EXTREMELY_SLOW_PROFILE = 24
 
 
 def before_send(event, hint):
     # 'se' tag may have been set in app.before_request
     se = None
-    if 'tags' in event.keys() and 'se' in event['tags']:
-        se = event['tags']['se']
+    if "tags" in event.keys() and "se" in event["tags"]:
+        se = event["tags"]["se"]
 
     if se not in [None, "undefined"]:
         se_tda_prefix_regex = r"[^-]+-tda-[^-]+-"
@@ -51,27 +56,17 @@ def before_send(event, hint):
             # creating separate issues for those. See https://github.com/sentry-demos/empower/pull/332
             se_fingerprint = prefix[0]
 
-        if se.startswith('prod-tda-'):
-            event['fingerprint'] = ['{{ default }}', se_fingerprint, RELEASE]
+        if se.startswith("prod-tda-"):
+            event["fingerprint"] = ["{{ default }}", se_fingerprint, RELEASE]
         else:
-            event['fingerprint'] = ['{{ default }}', se_fingerprint]
+            event["fingerprint"] = ["{{ default }}", se_fingerprint]
 
     return event
 
 
-def traces_sampler(sampling_context):
-    sentry_sdk.set_context("sampling_context", sampling_context)
-    wsgi_environ = sampling_context.get('wsgi_environ', {})
-    REQUEST_METHOD = wsgi_environ.get('REQUEST_METHOD', 'GET')
-    if REQUEST_METHOD == 'OPTIONS':
-        return 0.0
-    else:
-        return 1.0
-
-
 class MyFlask(Flask):
     def __init__(self, import_name, *args, **kwargs):
-        global RELEASE, DSN, ENVIRONMENT, RUBY_BACKEND, RUN_SLOW_PROFILE;
+        global RELEASE, DSN, ENVIRONMENT, RUBY_BACKEND, RUN_SLOW_PROFILE
         dotenv.load_dotenv()
 
         RELEASE = os.environ["RELEASE"]
@@ -83,26 +78,31 @@ class MyFlask(Flask):
         if "RUN_SLOW_PROFILE" in os.environ:
             RUN_SLOW_PROFILE = os.environ["RUN_SLOW_PROFILE"].lower() == "true"
 
-
         sentry_sdk.init(
             dsn=DSN,
             release=RELEASE,
             environment=ENVIRONMENT,
-            enable_logs=True,
             integrations=[
-                FlaskIntegration(),
-                SqlalchemyIntegration(),
                 RedisIntegration(cache_prefixes=["flask.", "ruby."]),
             ],
+            # Add request headers and IP for users,
+            # see https://docs.sentry.io/platforms/python/data-management/data-collected/ for more info
+            send_default_pii=True,
+            # Set traces_sample_rate to 1.0 to capture 100%
+            # of transactions for tracing.
             traces_sample_rate=1.0,
-            before_send=before_send,
-            traces_sampler=traces_sampler,
-            _experiments={
-                "profiles_sample_rate": 1.0,
-            }
+            # To collect profiles for all profile sessions,
+            # set `profile_session_sample_rate` to 1.0.
+            profile_session_sample_rate=1.0,
+            # Profiles will be automatically collected while
+            # there is an active span.
+            profile_lifecycle="trace",
+            # Enable logs to be sent to Sentry
+            enable_logs=True,
         )
 
         super(MyFlask, self).__init__(import_name, *args, **kwargs)
+
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -110,45 +110,6 @@ logger.info("Flask application initialized")
 logger.info("DSN: %s", DSN)
 logger.info("RELEASE: %s", RELEASE)
 logger.info("ENVIRONMENT: %s", ENVIRONMENT)
-
-# This ensures CORS headers are applied to ALL responses, including 500 errors
-# upgrading flask-cors from 3.0.10 to 6.0.1 and flask from 3.0.0 to 3.1.1 alone did not fix the issue
-# doesn't seem to be related to https://github.com/corydolphin/flask-cors/issues/210 as we don't set
-# debug=True anywhere. However suspiciously it didn't show up in production/TDA only when testing
-# locally against staging.
-class CORSWSGIWrapper:
-    def __init__(self, app):
-        self.app = app
-
-    def __call__(self, environ, start_response):
-        def custom_start_response(status, headers, exc_info=None):
-            headers.append(('Access-Control-Allow-Origin', '*'))
-            headers.append(('Access-Control-Allow-Headers', '*')) # needed for 'customertype' and other "tag headers"
-            return start_response(status, headers, exc_info)
-
-        try:
-            return self.app(environ, custom_start_response)
-        except Exception as e:
-            pass
-            # If an exception occurs, create a response with CORS headers
-            status = '500 Internal Server Error'
-            headers = [
-                ('Content-Type', 'application/json'),
-                ('Access-Control-Allow-Origin', '*'),
-                ('Access-Control-Allow-Headers', '*'),
-            ]
-            response_body = json.dumps({"error": "Internal Server Error"}).encode('utf-8')
-
-            def error_start_response(status, headers, exc_info=None):
-                return start_response(status, headers, exc_info)
-
-            error_start_response(status, headers)
-            return [response_body]
-
-    def __getattr__(self, name):
-        # Delegate attribute access to the underlying Flask app e.g. app.config
-        return getattr(self.app, name)
-
 
 app = MyFlask(__name__)
 CORS(app, origins="*", allow_headers="*")
@@ -163,7 +124,7 @@ cache_config = {
     "CACHE_DEFAULT_TIMEOUT": 300,
     "CACHE_REDIS_HOST": redis_host,
     "CACHE_REDIS_PORT": redis_port,
-    "CACHE_KEY_PREFIX": None
+    "CACHE_KEY_PREFIX": None,
 }
 
 app.config.from_mapping(cache_config)
@@ -171,138 +132,160 @@ cache = Cache(app)
 
 redis_client = redis.Redis(host=redis_host, port=redis_port, decode_responses=True)
 
-@app.route('/enqueue', methods=['POST'])
+
+@app.route("/enqueue", methods=["POST"])
 def enqueue():
-    logger.info('Received /enqueue endpoint request')
+    logger.info("Received /enqueue endpoint request")
 
     body = json.loads(request.data)
-    email = body['email']
-    r = sendEmail.apply_async(args=[email], queue='celery-new-subscriptions')
+    email = body["email"]
+    r = sendEmail.apply_async(args=[email], queue="celery-new-subscriptions")
 
-    logger.info('Completed /enqueue request - email task enqueued')
+    logger.info("Completed /enqueue request - email task enqueued")
 
     return jsonify({"status": "success"}), 200
 
 
-@app.route('/suggestion', methods=['GET'])
+@app.route("/suggestion", methods=["GET"])
 def suggestion():
-  logger.info('Received /suggestion endpoint request')
+    logger.info("Received /suggestion endpoint request")
 
-  client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+    openai_api_key = os.getenv("OPENAI_API_KEY")
+    if openai_api_key is None:
+        return jsonify({"error": "OpenAI API key not found"}), 404
 
+    client = OpenAI(api_key=openai_api_key)
 
-  catalog = request.args.get('catalog')
-  geo = request.args.get('geo')
+    catalog = request.args.get("catalog")
+    geo = request.args.get("geo")
 
-  logger.info('Processing /suggestion - starting AI pipeline')
+    logger.info("Processing /suggestion - starting AI pipeline")
 
-  prompt = f'''You are witty plant salesman. Here is your catalog of plants: {catalog}.
+    prompt = f"""You are witty plant salesman. Here is your catalog of plants: {catalog}.
     Provide a suggestion based on the user\'s location. Pick one plant from the catalog provided.
-    Keep your response short and concise. Try to incorporate the weather and current season.'''
+    Keep your response short and concise. Try to incorporate the weather and current season."""
 
-  @ai_track("Suggestion Pipeline")
-  def suggestion_pipeline():
-    with sentry_sdk.start_transaction(op="Suggestion AI", description="Suggestion ai pipeline"):
-      response = client.chat.completions.create(
-        model="gpt-4o-mini",
-        messages=
-        [
-          { "role" : "system", "content": prompt },
-          { "role": "user", "content": geo }
-        ]).choices[0].message.content
-      return response
+    @ai_track("Suggestion Pipeline")
+    def suggestion_pipeline():
+        with sentry_sdk.start_transaction(
+            op="Suggestion AI", description="Suggestion ai pipeline"
+        ):
+            response = (
+                client.chat.completions.create(
+                    model="gpt-4o-mini",
+                    messages=[
+                        {"role": "system", "content": prompt},
+                        {"role": "user", "content": geo},
+                    ],
+                )
+                .choices[0]
+                .message.content
+            )
+            return response
 
-  response = suggestion_pipeline()
+    response = suggestion_pipeline()
 
-  logger.info('Completed /suggestion request - AI suggestion generated')
+    logger.info("Completed /suggestion request - AI suggestion generated")
 
-  return jsonify({"suggestion": response}), 200
+    return jsonify({"suggestion": response}), 200
 
 
-@app.route('/checkout', methods=['POST'])
+@app.route("/checkout", methods=["POST"])
 def checkout():
-    logger.info('Received /checkout endpoint request')
+    logger.info("Received /checkout endpoint request")
 
     order = json.loads(request.data)
     cart = order["cart"]
     form = order["form"]
-    validate_inventory = True if "validate_inventory" not in order else order["validate_inventory"] == "true"
+    validate_inventory = (
+        True
+        if "validate_inventory" not in order
+        else order["validate_inventory"] == "true"
+    )
 
-    logger.info('Processing /checkout - validating order details')
+    logger.info("Processing /checkout - validating order details")
 
     inventory = []
     try:
-        with sentry_sdk.start_span(op="/checkout.get_inventory", description="function"):
+        with sentry_sdk.start_span(
+            op="/checkout.get_inventory", description="function"
+        ):
             inventory = get_inventory(cart)
     except Exception as err:
-        logger.error('Failed to get inventory')
+        logger.error("Failed to get inventory")
         raise (err)
 
-
-
     fulfilled_count = 0
-    out_of_stock = [] # list of items that are out of stock
+    out_of_stock = []  # list of items that are out of stock
     try:
         if validate_inventory:
             with sentry_sdk.start_span(op="process_order", description="function"):
                 if len(quantities) == 0:
                     raise Exception("Invalid checkout request: cart is empty")
 
-                quantities = {int(k): v for k, v in cart['quantities'].items()}
+                quantities = {int(k): v for k, v in cart["quantities"].items()}
                 inventory_dict = {x.productid: x for x in inventory}
                 for product_id in quantities:
-                    inventory_count = inventory_dict[product_id].count if product_id in inventory_dict else 0
+                    inventory_count = (
+                        inventory_dict[product_id].count
+                        if product_id in inventory_dict
+                        else 0
+                    )
                     if inventory_count >= quantities[product_id]:
-                        decrement_inventory(inventory_dict[product_id].id, quantities[product_id])
+                        decrement_inventory(
+                            inventory_dict[product_id].id, quantities[product_id]
+                        )
                         fulfilled_count += 1
                     else:
-                        title = list(filter(lambda x: x['id'] == product_id, cart['items']))[0]['title']
+                        title = list(
+                            filter(lambda x: x["id"] == product_id, cart["items"])
+                        )[0]["title"]
                         out_of_stock.append(title)
     except Exception as err:
-
-        logger.warning('Failed to validate inventory with cart: %s', cart)
+        logger.warning("Failed to validate inventory with cart: %s", cart)
         raise Exception("Error validating enough inventory for product") from err
 
     if len(out_of_stock) == 0:
-        result = {'status': 'success'}
+        result = {"status": "success"}
         logging.info("Checkout successful")
     else:
         # react doesn't handle these yet, shows "Checkout complete" as long as it's HTTP 200
         if fulfilled_count == 0:
-            result = {'status': 'failed'} # All items are out of stock
+            result = {"status": "failed"}  # All items are out of stock
         else:
-            result = {'status': 'partial', 'out_of_stock': out_of_stock}
+            result = {"status": "partial", "out_of_stock": out_of_stock}
 
     return make_response(json.dumps(result))
 
 
-@app.route('/success', methods=['GET'])
+@app.route("/success", methods=["GET"])
 def success():
-    logger.info('Received /success endpoint request')
+    logger.info("Received /success endpoint request")
 
-
-    logger.info('Completed /success request')
+    logger.info("Completed /success request")
     return "success from flask"
 
 
-@app.route('/products', methods=['GET'])
+@app.route("/products", methods=["GET"])
 def products():
-    logger.info('Received /products endpoint request')
+    logger.info("Received /products endpoint request")
 
     cache_key = str(random.randrange(100))
 
     product_inventory = None
-    fetch_promotions = request.args.get('fetch_promotions')
-    in_stock_only = request.args.get('in_stock_only')
-    timeout_seconds = (EXTREMELY_SLOW_PROFILE if fetch_promotions else NORMAL_SLOW_PROFILE)
+    fetch_promotions = request.args.get("fetch_promotions")
+    in_stock_only = request.args.get("in_stock_only")
+    timeout_seconds = (
+        EXTREMELY_SLOW_PROFILE if fetch_promotions else NORMAL_SLOW_PROFILE
+    )
 
-    logger.info('Processing /products')
+    logger.info("Processing /products")
 
     # Adding 0.5 seconds to the ruby /api_request in order to show caching
     # However, we want to keep the total trace time the same to preserve web vitals (+ other) functionality in sentry
     # Cache hits should keep the current delay, while cache misses will move 0.5 over to the ruby span
     ruby_delay_time = 0
-    if (cache_key != "7"):
+    if cache_key != "7":
         timeout_seconds -= 0.5
         ruby_delay_time = 0.5
 
@@ -315,7 +298,9 @@ def products():
                 productsJSON = json.loads(rows)
                 descriptions = [product["description"] for product in productsJSON]
                 with sentry_sdk.start_span(op="/get_iterator", description="function"):
-                    loop = get_iterator(len(descriptions) * 6 + (2 if fetch_promotions else -1))
+                    loop = get_iterator(
+                        len(descriptions) * 6 + (2 if fetch_promotions else -1)
+                    )
 
                     for i in range(loop * 10):
                         time_delta = time.time() - start_time
@@ -324,20 +309,22 @@ def products():
 
                         for i, description in enumerate(descriptions):
                             for pest in pests:
-                                if in_stock_only and productsJSON[i] not in product_inventory:
+                                if (
+                                    in_stock_only
+                                    and productsJSON[i] not in product_inventory
+                                ):
                                     continue
                                 if pest in description:
                                     try:
-                                        del productsJSON[i:i + 1]
+                                        del productsJSON[i : i + 1]
                                     except:
                                         productsJSON = json.loads(rows)
     except Exception as err:
-        logger.error('Processing /products - error occurred')
+        logger.error("Processing /products - error occurred")
         sentry_sdk.capture_exception(err)
         raise (err)
 
-    logger.info('Completed /products request')
-
+    logger.info("Completed /products request")
 
     get_api_request(cache_key, ruby_delay_time)
 
@@ -346,52 +333,53 @@ def products():
 
 def get_api_request(key, delay):
     start_time = time.time()
-    logger.info('Processing /products - starting API request')
+    logger.info("Processing /products - starting API request")
 
     with sentry_sdk.start_span(op="/ruby_cached_api_request", description="function"):
-      cached_response = redis_client.get("ruby.api.cache:" + str(key))
+        cached_response = redis_client.get("ruby.api.cache:" + str(key))
 
-      if cached_response is not None:
-          logger.info('Processing /products - cache hit for API request')
+        if cached_response is not None:
+            logger.info("Processing /products - cache hit for API request")
 
-          return cached_response
+            return cached_response
 
-      logger.info('Processing /products - cache miss for API request')
+        logger.info("Processing /products - cache miss for API request")
+
+        try:
+            with sentry_sdk.start_span(op="/api_request", description="function"):
+                headers = parseHeaders(RUBY_CUSTOM_HEADERS, request.headers)
+                r = requests.get(RUBY_BACKEND + "/api", headers=headers)
+                r.raise_for_status()  # returns an HTTPError object if an error has occurred during the process
+
+                time_delta = time.time() - start_time
+                sleep_time = delay - time_delta
+                if sleep_time > 0:
+                    time.sleep(sleep_time)
+
+                # For demo show we want to show cache misses so only save 1 / 100
+                if key == 7:
+                    logger.info("Processing /products - caching API response")
+                    redis_client.set("ruby.api.cache:" + str(key), key)
+
+        except Exception as err:
+            logger.error("Processing /products - API request failed")
+            sentry_sdk.capture_exception(err)
+
+        return key
 
 
-      try:
-          with sentry_sdk.start_span(op="/api_request", description="function"):
-              headers = parseHeaders(RUBY_CUSTOM_HEADERS, request.headers)
-              r = requests.get(RUBY_BACKEND + "/api", headers=headers)
-              r.raise_for_status()  # returns an HTTPError object if an error has occurred during the process
-
-              time_delta = time.time() - start_time
-              sleep_time = delay - time_delta
-              if sleep_time > 0:
-                time.sleep(sleep_time)
-
-              # For demo show we want to show cache misses so only save 1 / 100
-              if key == 7:
-                logger.info('Processing /products - caching API response')
-                redis_client.set("ruby.api.cache:" + str(key), key)
-
-      except Exception as err:
-          logger.error('Processing /products - API request failed')
-          sentry_sdk.capture_exception(err)
-
-      return key
-
-
-@app.route('/products-join', methods=['GET'])
+@app.route("/products-join", methods=["GET"])
 def products_join():
-    logger.info('Received /products-join endpoint request')
+    logger.info("Received /products-join endpoint request")
 
     try:
-        with sentry_sdk.start_span(op="/products-join.get_products_join", description="function"):
+        with sentry_sdk.start_span(
+            op="/products-join.get_products_join", description="function"
+        ):
             rows = get_products_join()
-            logger.info('Processing /products-join - data retrieved')
+            logger.info("Processing /products-join - data retrieved")
     except Exception as err:
-        logger.error('Processing /products-join - error getting data')
+        logger.error("Processing /products-join - error getting data")
         sentry_sdk.capture_exception(err)
         raise (err)
 
@@ -399,104 +387,105 @@ def products_join():
         headers = parseHeaders(RUBY_CUSTOM_HEADERS, request.headers)
         r = requests.get(RUBY_BACKEND + "/api", headers=headers)
         r.raise_for_status()  # returns an HTTPError object if an error has occurred during the process
-        logger.info('Processing /products-join - backend API call successful')
+        logger.info("Processing /products-join - backend API call successful")
     except Exception as err:
-        logger.error('Processing /products-join - backend API call failed')
+        logger.error("Processing /products-join - backend API call failed")
         sentry_sdk.capture_exception(err)
 
     return rows
 
 
-@app.route('/handled', methods=['GET'])
+@app.route("/handled", methods=["GET"])
 def handled_exception():
-    logger.info('Received /handled endpoint request')
+    logger.info("Received /handled endpoint request")
 
     try:
-        '2' + 2
+        "2" + 2
     except Exception as err:
-        logger.error('Processing /handled - intentional exception occurred')
+        logger.error("Processing /handled - intentional exception occurred")
         sentry_sdk.capture_exception(err)
-    return 'failed'
+    return "failed"
 
 
-@app.route('/unhandled', methods=['GET'])
+@app.route("/unhandled", methods=["GET"])
 def unhandled_exception():
-    logger.info('Received /unhandled endpoint request')
+    logger.info("Received /unhandled endpoint request")
 
     obj = {}
-    obj['keyDoesnt  Exist']
+    obj["keyDoesnt  Exist"]
 
 
-@app.route('/api', methods=['GET'])
+@app.route("/api", methods=["GET"])
 def api():
-    logger.info('Received /api endpoint request')
+    logger.info("Received /api endpoint request")
     return "flask /api"
 
 
-@app.route('/organization', methods=['GET'])
+@app.route("/organization", methods=["GET"])
 @cache.cached(timeout=1000, key_prefix="flask.cache.organization")
 def organization():
-    logger.info('Received /organization endpoint request')
+    logger.info("Received /organization endpoint request")
 
     # perform get_products db query 1% of time in order
     #   to populate "Found In" endpoints in Queries
     if random.random() < 0.01:
-        logger.info('Processing /organization - executing random products query')
+        logger.info("Processing /organization - executing random products query")
         rows = get_products()
     return "flask /organization"
 
 
-@app.route('/connect', methods=['GET'])
+@app.route("/connect", methods=["GET"])
 def connect():
-    logger.info('Received /connect endpoint request')
+    logger.info("Received /connect endpoint request")
     return "flask /connect"
 
 
-@app.route('/showSuggestion', methods=['GET'])
+@app.route("/showSuggestion", methods=["GET"])
 def showSuggestion():
-    logger.info('Received /showSuggestion endpoint request')
+    logger.info("Received /showSuggestion endpoint request")
 
     has_openai_key = os.getenv("OPENAI_API_KEY") is not None
-    logger.info('Processing /showSuggestion - OpenAI key availability checked')
+    logger.info("Processing /showSuggestion - OpenAI key availability checked")
 
     return jsonify({"response": has_openai_key}), 200
 
-@app.route('/product/0/info', methods=['GET'])
-def product_info():
-    logger.info('Received /product/0/info endpoint request')
 
-    time.sleep(.55)
-    logger.info('Completed /product/0/info request')
+@app.route("/product/0/info", methods=["GET"])
+def product_info():
+    logger.info("Received /product/0/info endpoint request")
+
+    time.sleep(0.55)
+    logger.info("Completed /product/0/info request")
     return "flask /product/0/info"
 
 
 # uncompressed assets
-@app.route('/uncompressed_assets/<path:path>')
+@app.route("/uncompressed_assets/<path:path>")
 def send_report(path):
-    logger.info('Received /uncompressed_assets request')
+    logger.info("Received /uncompressed_assets request")
 
-    time.sleep(.55)
-    response = send_from_directory('../uncompressed_assets', path)
+    time.sleep(0.55)
+    response = send_from_directory("../uncompressed_assets", path)
     # `Timing-Allow-Origin: *` allows timing/sizes to visbile in span
-    response.headers['Timing-Allow-Origin'] = '*'
+    response.headers["Timing-Allow-Origin"] = "*"
     # Overwriting `Content-Type` header to disable compression
-    response.headers['Content-Type'] = 'application/octet-stream'
+    response.headers["Content-Type"] = "application/octet-stream"
 
-    logger.info('Completed /uncompressed_assets request')
+    logger.info("Completed /uncompressed_assets request")
 
     return response
 
 
 # compressed assets
-@app.route('/compressed_assets/<path:path>')
+@app.route("/compressed_assets/<path:path>")
 def send_report_configured_properly(path):
-    logger.info('Received /compressed_assets request')
+    logger.info("Received /compressed_assets request")
 
-    response = send_from_directory('../compressed_assets', path)
+    response = send_from_directory("../compressed_assets", path)
     # `Timing-Allow-Origin: *` allows timing/sizes to visbile in span
-    response.headers['Timing-Allow-Origin'] = '*'
+    response.headers["Timing-Allow-Origin"] = "*"
 
-    logger.info('Completed /compressed_assets request')
+    logger.info("Completed /compressed_assets request")
 
     return response
 
@@ -504,19 +493,19 @@ def send_report_configured_properly(path):
 @app.before_request
 def sentry_event_context():
     # Extract context information
-    se = request.headers.get('se')
-    customerType = request.headers.get('customerType')
-    email = request.headers.get('email')
+    se = request.headers.get("se")
+    customerType = request.headers.get("customerType")
+    email = request.headers.get("email")
 
     # Log request context information
-    logger.debug('Setting up request context')
+    logger.debug("Setting up request context")
 
     if se not in [None, "undefined"]:
         sentry_sdk.set_tag("se", se)
     else:
         # sometimes this is the only way to propagate, e.g. when requested through a dynamically
         # inserted HTML tag as in case with (un)compressed_assets
-        se = request.args.get('se')
+        se = request.args.get("se")
         if se not in [None, "undefined"]:
             sentry_sdk.set_tag("se", se)
 
@@ -525,5 +514,6 @@ def sentry_event_context():
 
     if email not in [None, "undefined"]:
         sentry_sdk.set_user({"email": email})
+
 
 application = app

@@ -35,7 +35,7 @@
 #     #         [MagicMock(id=1, name="Product 1")],  # products query result
 #     #         [MagicMock(id=1, productId=1, rating=5, customerId=1, description="Good", created="2024-08-22")]  # reviews query result
 #     #     ]
-        
+
 #     #     result = get_products()
 #     #     expected_result = json.dumps([{
 #     #         'id': 1,
@@ -62,7 +62,7 @@
 #     #             MagicMock(id=1, productid=1, rating=5, customerId=1, description="Good", created="2024-08-22")
 #     #         ]  # reviews query result
 #     #     ]
-        
+
 #     #     result = get_products_join()
 #     #     expected_result = json.dumps([{
 #     #         'id': 1,
