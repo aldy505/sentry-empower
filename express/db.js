@@ -1,9 +1,10 @@
 import * as Sentry from "@sentry/node";
+import { knex } from "knex";
 
 // Knex is the database query builder used in the GCP docs, which
 // is why we are using it here. See docs:
 // https://cloud.google.com/sql/docs/postgres/connect-app-engine-standard#node.js
-const knex = openDBConnection();
+const databaseConnection = openDBConnection();
 
 const getProducts = async function () {
   return await Sentry.startSpan({
@@ -17,7 +18,7 @@ const getProducts = async function () {
     // SELECT pg_get_viewdef('backorder_inventory', true)
     const productsQuery = `SELECT * FROM products CROSS JOIN backorder_inventory`;
 
-    const products = await knex.raw(productsQuery);
+    const products = await databaseConnection.raw(productsQuery);
     Sentry.setTag("totalProducts", products.rows.length);
     span.setAttribute("totalProducts", products.rows.length);
 
@@ -27,7 +28,7 @@ const getProducts = async function () {
       // weekly_promotions is a "sleepy view", run the following query to get current sleep duration:
       // SELECT pg_get_viewdef('weekly_promotions', true)
       const reviewsQuery = `SELECT * FROM reviews, weekly_promotions WHERE productId = ${product.id}`;
-      const retrievedReviews = await knex.raw(reviewsQuery);
+      const retrievedReviews = await databaseConnection.raw(reviewsQuery);
       let productWithReviews = product;
       productWithReviews["reviews"] = retrievedReviews.rows;
       formattedProducts.push(productWithReviews);
@@ -44,13 +45,13 @@ const getJoinedProducts = async function () {
   }, async (span) => {
     // Retrieve Products
     const productsQuery = `SELECT * FROM products`;
-    const products = await knex.raw(productsQuery);
+    const products = await databaseConnection.raw(productsQuery);
     Sentry.setTag("totalProducts", products.rows.length);
 
     // Retrieve Reviews
     const reviewsQuery =
       "SELECT reviews.id, products.id AS productid, reviews.rating, reviews.customerId, reviews.description, reviews.created FROM reviews INNER JOIN products ON reviews.productId = products.id";
-    const retrievedReviews = await knex.raw(reviewsQuery);
+    const retrievedReviews = await databaseConnection.raw(reviewsQuery);
 
     // Format Products/Reviews
     let formattedProducts = [];
@@ -79,7 +80,7 @@ const getInventory = async function (cart) {
     productIds = formatArray(productIds);
     console.log("> productIds", productIds);
 
-    const inventory = await knex.raw(
+    const inventory = await databaseConnection.raw(
       `SELECT * FROM inventory WHERE productId in ${productIds}`
     );
 
@@ -107,7 +108,7 @@ function openDBConnection() {
     host = "/cloudsql/" + process.env.DB_CLOUD_SQL_CONNECTION_NAME;
   }
 
-  const db = require("knex")({
+  const db = knex({
     client: "pg",
     connection: {
       user: process.env.DB_USERNAME,

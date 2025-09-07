@@ -85,9 +85,6 @@ app.use(urlencoded({ extended: true }));
 app.use(json());
 app.use(sentryEventContext);
 
-// Configure ENV
-require("dotenv").config();
-
 app.get("/", (req, res) => {
   res.send(
     "Sentry Express Service says Hello - turn me into a microservice that powers Payments, Shipping, or Customers"
