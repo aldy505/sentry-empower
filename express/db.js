@@ -1,5 +1,5 @@
 import * as Sentry from "@sentry/node";
-import { knex } from "knex";
+import knex from "knex";
 
 // Knex is the database query builder used in the GCP docs, which
 // is why we are using it here. See docs:
