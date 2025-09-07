@@ -5,4 +5,4 @@ COPY package.json package-lock.json ./
 RUN npm install
 COPY . .
 
-CMD ["node", "--env-file-if-exists", ".env", "--import", "instrument.js", "server.js"]
+CMD ["node", "--env-file-if-exists", ".env", "--import", "./instrument.js", "./server.js"]

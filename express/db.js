@@ -119,4 +119,4 @@ function openDBConnection() {
   return db;
 }
 
-export default { getProducts, getJoinedProducts, getInventory };
+export { getProducts, getJoinedProducts, getInventory };
