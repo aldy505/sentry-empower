@@ -9,7 +9,6 @@ express/node_modules
 /.pnp
 .pnp.js
 .vercel
-react/config-overrides.js
 
 # testing
 /coverage
