@@ -3,7 +3,7 @@ FROM python:3.11-slim-bookworm
 WORKDIR /src
 COPY pyproject.toml uv.lock .python-version ./
 
-COPY --from=ghcr.io/astral-sh/uv:bookworm-slim /uv /uvx /bin/
+COPY --from=ghcr.io/astral-sh/uv:bookworm-slim /usr/local/bin/uv /usr/local/bin/uvx /usr/bin/
 RUN uv sync --no-dev
 
 COPY . .
